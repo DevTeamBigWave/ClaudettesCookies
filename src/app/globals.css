@@ -1,0 +1,72 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Brand tokens — Claudette's Cookies
+   Warm bakery palette: butter cream canvas, espresso ink, a punchy berry-jam
+   accent. Swap these HSL triples when the official brand guide lands and the
+   entire UI (storefront + admin) re-themes. Values are H S% L%.
+   ────────────────────────────────────────────────────────────────────────── */
+@layer base {
+  :root {
+    --background: 39 54% 96%;        /* butter cream */
+    --foreground: 24 28% 16%;        /* espresso ink */
+
+    --card: 0 0% 100%;
+    --card-foreground: 24 28% 16%;
+
+    --primary: 350 63% 42%;          /* berry jam */
+    --primary-foreground: 39 54% 97%;
+
+    --secondary: 32 42% 88%;         /* toasted oat */
+    --secondary-foreground: 24 28% 20%;
+
+    --accent: 28 78% 52%;            /* caramel */
+    --accent-foreground: 24 40% 12%;
+
+    --muted: 36 30% 92%;
+    --muted-foreground: 24 12% 40%;
+
+    --destructive: 0 72% 45%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 32 24% 84%;
+    --input: 32 24% 84%;
+    --ring: 350 63% 42%;
+
+    --radius: 0.9rem;
+  }
+
+  .dark {
+    --background: 24 24% 10%;
+    --foreground: 39 40% 94%;
+    --card: 24 22% 13%;
+    --card-foreground: 39 40% 94%;
+    --primary: 350 70% 56%;
+    --primary-foreground: 24 24% 10%;
+    --secondary: 26 18% 22%;
+    --secondary-foreground: 39 40% 94%;
+    --accent: 28 78% 56%;
+    --accent-foreground: 24 24% 10%;
+    --muted: 26 14% 20%;
+    --muted-foreground: 36 14% 64%;
+    --border: 26 14% 24%;
+    --input: 26 14% 24%;
+    --ring: 350 70% 56%;
+  }
+
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+@layer components {
+  .container-prose {
+    @apply mx-auto max-w-3xl px-6;
+  }
+}
