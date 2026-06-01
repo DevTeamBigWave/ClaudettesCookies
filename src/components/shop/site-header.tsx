@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import { ShoppingBag, Menu, X } from "lucide-react";
 import { useCart } from "@/store/cart";
@@ -30,8 +31,18 @@ export function SiteHeader() {
           {open ? <X className="size-5" /> : <Menu className="size-5" />}
         </button>
 
-        <Link href="/" className="font-display text-xl font-semibold tracking-tight">
-          Claudette&rsquo;s
+        <Link href="/" className="flex items-center gap-2" aria-label="Claudette's Cookies — home">
+          <Image
+            src="/brand/claudettes-badge.png"
+            alt="Claudette's Cookies"
+            width={40}
+            height={40}
+            priority
+            className="size-10"
+          />
+          <span className="font-display text-xl font-semibold tracking-tight text-[hsl(var(--maroon))]">
+            Claudette&rsquo;s
+          </span>
         </Link>
 
         <nav className="hidden items-center gap-8 md:flex">

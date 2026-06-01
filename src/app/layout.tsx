@@ -1,13 +1,32 @@
 import type { Metadata } from "next";
-import { Fraunces, Inter } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 
-const sans = Inter({ subsets: ["latin"], variable: "--font-sans", display: "swap" });
-const display = Fraunces({
-  subsets: ["latin"],
+// Mabry — neo-grotesque body face (brand primary text).
+const sans = localFont({
+  variable: "--font-sans",
+  display: "swap",
+  src: [
+    { path: "./fonts/mabry-regular.otf", weight: "400", style: "normal" },
+    { path: "./fonts/mabry-italic.otf", weight: "400", style: "italic" },
+  ],
+});
+
+// GT Alpina — editorial serif for headlines.
+const display = localFont({
   variable: "--font-display",
   display: "swap",
-  weight: ["400", "500", "600", "700"],
+  src: [
+    { path: "./fonts/GT-Alpina-Standard-Regular.otf", weight: "400", style: "normal" },
+    { path: "./fonts/GT-Alpina-Standard-Regular-Italic.otf", weight: "400", style: "italic" },
+  ],
+});
+
+// Central Avenue Bold — deco display accent for big brand moments.
+const deco = localFont({
+  variable: "--font-deco",
+  display: "swap",
+  src: [{ path: "./fonts/central-avenue-bold.otf", weight: "700", style: "normal" }],
 });
 
 export const metadata: Metadata = {
@@ -28,7 +47,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${sans.variable} ${display.variable}`}>
+    <html lang="en" className={`${sans.variable} ${display.variable} ${deco.variable}`}>
       <body>{children}</body>
     </html>
   );
