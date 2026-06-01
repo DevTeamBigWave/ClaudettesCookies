@@ -13,17 +13,16 @@ const display = Fraunces({
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://claudettescookies.shop"),
   title: {
-    default: "Claudette's Cookies — Four Flavors. Zero Compromise.",
+    default: "Claudette's Cookies — No Seed Oils. Just Butter.",
     template: "%s · Claudette's Cookies",
   },
   description:
-    "Small-batch cookies baked with the ingredients your grandmother would recognize. Four flavors, zero compromise.",
+    "Moroccan-inspired flavors meet healthy eats. Baked with grass-fed butter, organic flour, and zero compromises — the way cookies were made before the industrial revolution.",
   openGraph: {
     type: "website",
     siteName: "Claudette's Cookies",
-    title: "Claudette's Cookies — Four Flavors. Zero Compromise.",
-    description:
-      "Small-batch cookies baked with the ingredients your grandmother would recognize.",
+    title: "Claudette's Cookies — No Seed Oils. Just Butter.",
+    description: "Moroccan-inspired flavors meet healthy eats. Everybody eats.",
   },
 };
 

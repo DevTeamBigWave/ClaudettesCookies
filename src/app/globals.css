@@ -3,57 +3,67 @@
 @tailwind utilities;
 
 /* ──────────────────────────────────────────────────────────────────────────
-   Brand tokens — Claudette's Cookies
-   Warm bakery palette: butter cream canvas, espresso ink, a punchy berry-jam
-   accent. Swap these HSL triples when the official brand guide lands and the
-   entire UI (storefront + admin) re-themes. Values are H S% L%.
+   Brand tokens — Claudette's Cookies (official 2024 brand guide)
+   Palette: Cream #F5F1EB · Paprika #FC480F · Maroon #7B0B0B · Brown #683010
+            Tan #C49A55 · Yellow #FBD550 · Pink #FFAA98 · Cornflower #8BAEE2
+            Navy #313168.  Values below are HSL triples (H S% L%).
    ────────────────────────────────────────────────────────────────────────── */
 @layer base {
   :root {
-    --background: 39 54% 96%;        /* butter cream */
-    --foreground: 24 28% 16%;        /* espresso ink */
+    --background: 36 33% 94%;        /* Cream */
+    --foreground: 22 73% 18%;        /* deep Brown ink */
 
     --card: 0 0% 100%;
-    --card-foreground: 24 28% 16%;
+    --card-foreground: 22 73% 18%;
 
-    --primary: 350 63% 42%;          /* berry jam */
-    --primary-foreground: 39 54% 97%;
+    --primary: 14 98% 52%;           /* Paprika — primary CTAs */
+    --primary-foreground: 36 33% 96%;
 
-    --secondary: 32 42% 88%;         /* toasted oat */
-    --secondary-foreground: 24 28% 20%;
+    --secondary: 37 48% 88%;         /* light Tan */
+    --secondary-foreground: 22 73% 22%;
 
-    --accent: 28 78% 52%;            /* caramel */
-    --accent-foreground: 24 40% 12%;
+    --accent: 47 96% 65%;            /* Yellow */
+    --accent-foreground: 22 73% 18%;
 
-    --muted: 36 30% 92%;
-    --muted-foreground: 24 12% 40%;
+    --muted: 36 30% 90%;
+    --muted-foreground: 22 20% 38%;
 
-    --destructive: 0 72% 45%;
-    --destructive-foreground: 0 0% 100%;
+    --destructive: 0 84% 26%;        /* Maroon */
+    --destructive-foreground: 36 33% 96%;
 
-    --border: 32 24% 84%;
-    --input: 32 24% 84%;
-    --ring: 350 63% 42%;
+    --border: 37 30% 82%;
+    --input: 37 30% 82%;
+    --ring: 14 98% 52%;
+
+    /* Extended brand hues for bespoke sections. */
+    --maroon: 0 84% 26%;
+    --brown: 22 73% 24%;
+    --tan: 37 48% 55%;
+    --pink: 10 100% 80%;
+    --cornflower: 216 60% 72%;
+    --navy: 240 36% 30%;
 
     --radius: 0.9rem;
   }
 
   .dark {
-    --background: 24 24% 10%;
-    --foreground: 39 40% 94%;
-    --card: 24 22% 13%;
-    --card-foreground: 39 40% 94%;
-    --primary: 350 70% 56%;
-    --primary-foreground: 24 24% 10%;
-    --secondary: 26 18% 22%;
-    --secondary-foreground: 39 40% 94%;
-    --accent: 28 78% 56%;
-    --accent-foreground: 24 24% 10%;
-    --muted: 26 14% 20%;
-    --muted-foreground: 36 14% 64%;
-    --border: 26 14% 24%;
-    --input: 26 14% 24%;
-    --ring: 350 70% 56%;
+    --background: 240 36% 12%;       /* Navy-rooted dark */
+    --foreground: 36 33% 94%;
+    --card: 240 30% 16%;
+    --card-foreground: 36 33% 94%;
+    --primary: 14 98% 56%;
+    --primary-foreground: 240 36% 12%;
+    --secondary: 22 30% 24%;
+    --secondary-foreground: 36 33% 94%;
+    --accent: 47 96% 65%;
+    --accent-foreground: 240 36% 12%;
+    --muted: 240 18% 22%;
+    --muted-foreground: 36 20% 70%;
+    --destructive: 0 70% 45%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 240 18% 26%;
+    --input: 240 18% 26%;
+    --ring: 14 98% 56%;
   }
 
   * {

@@ -21,20 +21,21 @@ export default async function HomePage() {
         <div className="container grid items-center gap-10 py-16 md:grid-cols-2 md:py-24">
           <div className="animate-fade-up">
             <p className="mb-3 text-sm font-semibold uppercase tracking-widest text-primary">
-              Small-batch · NYC
+              Everybody Eats!
             </p>
-            <h1 className="font-display text-5xl font-semibold leading-[1.05] md:text-6xl">
-              Four flavors.
+            <h1 className="font-display text-5xl font-semibold leading-[1.05] text-[hsl(var(--maroon))] md:text-6xl">
+              No seed oils.
               <br />
-              Zero compromise.
+              Just butter.
             </h1>
             <p className="mt-5 max-w-md text-lg text-muted-foreground">
-              We took the chemistry out of cookies and put back the ingredients your
-              grandmother would recognize. Baked fresh, shipped to your door.
+              We bake with grass-fed butter, organic flour, and zero compromises — the way
+              cookies were made before the industrial revolution. Moroccan-inspired flavors,
+              shipped to your door.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Button asChild size="lg">
-                <Link href="/shop">Shop the boxes</Link>
+                <Link href="/shop">Shop the cleanest cookie</Link>
               </Button>
               <Button asChild size="lg" variant="outline">
                 <Link href="/about">Our story</Link>
@@ -69,9 +70,9 @@ export default async function HomePage() {
       <section className="border-y border-border bg-secondary/40">
         <div className="container grid gap-6 py-10 text-center sm:grid-cols-3">
           {[
-            ["Clean ingredients", "Names you can pronounce. Nothing you can't."],
+            ["No seed oils", "Grass-fed butter and organic flour. That's it."],
             ["Baked to order", "Small batches, never sitting on a shelf."],
-            ["Four to a box", "One ritual at a time, $32 a box."],
+            ["Cookies before chemistry", "Real ingredients you can actually pronounce."],
           ].map(([title, copy]) => (
             <div key={title}>
               <p className="font-display text-lg font-semibold">{title}</p>

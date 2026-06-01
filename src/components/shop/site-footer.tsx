@@ -8,8 +8,8 @@ export function SiteFooter() {
         <div className="lg:col-span-2">
           <p className="font-display text-2xl font-semibold">Claudette&rsquo;s Cookies</p>
           <p className="mt-3 max-w-sm text-sm text-muted-foreground">
-            Four flavors. Zero compromise. Small-batch cookies baked with the ingredients
-            your grandmother would recognize.
+            No seed oils. Just butter. Moroccan-inspired flavors and healthy eats, baked
+            with grass-fed butter and organic flour. Everybody eats.
           </p>
           <div className="mt-6">
             <p className="mb-2 text-sm font-semibold">Get 10% off your first box</p>
