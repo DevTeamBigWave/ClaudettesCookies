@@ -12,7 +12,7 @@ export async function getActiveProducts(): Promise<ProductWithRelations[]> {
     .eq("status", "active")
     .order("position", { ascending: true });
   if (error) throw error;
-  return (data as ProductWithRelations[]) ?? [];
+  return (data as unknown as ProductWithRelations[]) ?? [];
 }
 
 export async function getFeaturedProducts(limit = 3): Promise<ProductWithRelations[]> {
@@ -25,7 +25,7 @@ export async function getFeaturedProducts(limit = 3): Promise<ProductWithRelatio
     .order("position", { ascending: true })
     .limit(limit);
   if (error) throw error;
-  return (data as ProductWithRelations[]) ?? [];
+  return (data as unknown as ProductWithRelations[]) ?? [];
 }
 
 export async function getProductByHandle(
@@ -37,5 +37,5 @@ export async function getProductByHandle(
     .select(SELECT)
     .eq("handle", handle)
     .maybeSingle();
-  return (data as ProductWithRelations) ?? null;
+  return (data as unknown as ProductWithRelations | null) ?? null;
 }

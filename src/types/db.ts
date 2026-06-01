@@ -187,30 +187,40 @@ export interface Profile {
   updated_at: string;
 }
 
+/** Table shape supabase-js expects (Row/Insert/Update/Relationships). */
+type Table<T> = { Row: T; Insert: Partial<T>; Update: Partial<T>; Relationships: [] };
+
 /**
- * Minimal Database surface for @supabase/ssr generics. Tables are typed loosely
- * (Row only) where the app reads them; privileged writes go through the admin
- * client which we cast at the call site.
+ * Database surface for @supabase/ssr / supabase-js generics. Must include the
+ * full schema shape (Tables/Views/Functions/Enums/CompositeTypes) or the typed
+ * client degrades query results to `never`.
  */
 export interface Database {
   public: {
     Tables: {
-      products: { Row: Product; Insert: Partial<Product>; Update: Partial<Product> };
-      product_images: { Row: ProductImage; Insert: Partial<ProductImage>; Update: Partial<ProductImage> };
-      product_variants: { Row: ProductVariant; Insert: Partial<ProductVariant>; Update: Partial<ProductVariant> };
-      orders: { Row: Order; Insert: Partial<Order>; Update: Partial<Order> };
-      order_items: { Row: OrderItem; Insert: Partial<OrderItem>; Update: Partial<OrderItem> };
-      discounts: { Row: Discount; Insert: Partial<Discount>; Update: Partial<Discount> };
-      gift_cards: { Row: GiftCard; Insert: Partial<GiftCard>; Update: Partial<GiftCard> };
-      blog_posts: { Row: BlogPost; Insert: Partial<BlogPost>; Update: Partial<BlogPost> };
-      email_subscribers: { Row: EmailSubscriber; Insert: Partial<EmailSubscriber>; Update: Partial<EmailSubscriber> };
-      email_campaigns: { Row: EmailCampaign; Insert: Partial<EmailCampaign>; Update: Partial<EmailCampaign> };
-      profiles: { Row: Profile; Insert: Partial<Profile>; Update: Partial<Profile> };
+      products: Table<Product>;
+      product_images: Table<ProductImage>;
+      product_variants: Table<ProductVariant>;
+      orders: Table<Order>;
+      order_items: Table<OrderItem>;
+      discounts: Table<Discount>;
+      gift_cards: Table<GiftCard>;
+      blog_posts: Table<BlogPost>;
+      email_subscribers: Table<EmailSubscriber>;
+      email_campaigns: Table<EmailCampaign>;
+      profiles: Table<Profile>;
     };
+    Views: Record<string, never>;
     Functions: {
       finalize_paid_order: { Args: { p_order_id: string; p_payment_intent: string }; Returns: boolean };
       redeem_gift_card: { Args: { p_code: string; p_amount_cents: number; p_order_id: string }; Returns: number };
       is_staff: { Args: Record<string, never>; Returns: boolean };
     };
+    Enums: {
+      user_role: UserRole;
+      product_status: ProductStatus;
+      order_status: OrderStatus;
+    };
+    CompositeTypes: Record<string, never>;
   };
 }

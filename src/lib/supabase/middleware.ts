@@ -1,6 +1,8 @@
-import { createServerClient } from "@supabase/ssr";
+import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import type { Database } from "@/types/db";
+
+type CookieToSet = { name: string; value: string; options?: CookieOptions };
 
 /**
  * Refreshes the Supabase session on every request and guards /admin.
@@ -17,7 +19,7 @@ export async function updateSession(request: NextRequest) {
         getAll() {
           return request.cookies.getAll();
         },
-        setAll(cookiesToSet) {
+        setAll(cookiesToSet: CookieToSet[]) {
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
           response = NextResponse.next({ request });
           cookiesToSet.forEach(({ name, value, options }) =>
@@ -43,11 +45,12 @@ export async function updateSession(request: NextRequest) {
       return NextResponse.redirect(url);
     }
     // Coarse role check at the edge; pages still call requireAdmin() server-side.
-    const { data: profile } = await supabase
+    const { data } = await supabase
       .from("profiles")
       .select("role")
       .eq("id", user.id)
       .single();
+    const profile = data as { role: string } | null;
 
     if (!profile || !["admin", "staff"].includes(profile.role)) {
       const url = request.nextUrl.clone();
