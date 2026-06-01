@@ -1,7 +1,21 @@
 import { Resend } from "resend";
 import { env } from "@/lib/env";
 
-export const resend = new Resend(env.RESEND_API_KEY);
+/**
+ * Lazily-constructed Resend client (see stripe.ts for the rationale — the API
+ * key isn't available during `next build`). Call sites use `resend.x` unchanged.
+ */
+let _resend: Resend | null = null;
+function getResend(): Resend {
+  if (!_resend) _resend = new Resend(env.RESEND_API_KEY);
+  return _resend;
+}
+
+export const resend = new Proxy({} as Resend, {
+  get(_target, prop) {
+    return Reflect.get(getResend(), prop, getResend());
+  },
+});
 
 export const EMAIL_FROM = env.RESEND_FROM_EMAIL;
 export const EMAIL_REPLY_TO = env.RESEND_REPLY_TO;

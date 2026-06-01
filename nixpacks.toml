@@ -1,0 +1,17 @@
+# Railway / Nixpacks build configuration.
+#
+# Why this file exists: Nixpacks' default Node install phase runs `npm ci`,
+# which deletes node_modules wholesale before reinstalling. Nixpacks also mounts
+# node_modules/.cache as a build-cache volume — and you can't rmdir a mounted
+# directory, so `npm ci` fails with `EBUSY: resource busy` before the build even
+# starts. Using `npm install` (which updates in place rather than wiping the
+# tree) sidesteps the mount conflict entirely.
+
+[phases.install]
+cmds = ["npm install --no-audit --no-fund"]
+
+[phases.build]
+cmds = ["npm run build"]
+
+[start]
+cmd = "npm run start"
