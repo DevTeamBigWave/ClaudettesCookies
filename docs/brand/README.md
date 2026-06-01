@@ -1,44 +1,47 @@
-# Brand assets — where things go
+# Brand assets — what's where
 
-This is the home for everything from the Claudette's brand guide. Drop files in
-the right folder and they get wired into the app.
+Everything from the Claudette's brand guide is wired into the app. This is the
+map of where each piece lives.
 
-## 1. Fonts → `src/app/fonts/`
-Put the actual font files here (`.woff2` strongly preferred; `.ttf`/`.otf` also
-fine). Next.js self-hosts them via `next/font/local` — fast, no external CDN, no
-layout shift.
+## Colors → `src/app/globals.css`
+The official palette lives as HSL design tokens; every component re-themes from
+this one file.
 
-Name them clearly, e.g.:
-```
-src/app/fonts/
-  Heading-Regular.woff2
-  Heading-Bold.woff2
-  Body-Regular.woff2
-  Body-Medium.woff2
-```
-Tell me which family is for **headings** vs **body** and I'll register them in
-`src/app/layout.tsx` (they already map to the `--font-display` and `--font-sans`
-tokens the whole UI uses).
+| Token | Color | Hex |
+|-------|-------|-----|
+| `--background` | Cream | `#F5F1EB` |
+| `--primary` | Paprika | `#FC480F` |
+| `--foreground` / `--maroon` | Maroon | `#7B0B0B` |
+| `--brown` | Brown | `#683010` |
+| `--tan` | Tan | `#C49A55` |
+| `--accent` / yellow | Yellow | `#FBD550` |
+| `--pink` | Pink | `#FFAA98` |
+| `--cornflower` | Cornflower | `#8BAEE2` |
+| `--navy` | Navy | `#313168` |
 
-## 2. Brand guide → `docs/brand/`
-Drop the brand guide PDF here (e.g. `docs/brand/brand-guide.pdf`). I can read it
-directly to pull the exact hex colors, type scale, spacing, and voice — so I
-don't have to guess.
+## Fonts → `src/app/fonts/`
+Self-hosted via `next/font/local` in `src/app/layout.tsx`:
 
-## 3. Logo & shipped imagery → `public/brand/`
-Anything served to visitors:
-```
-public/brand/
-  logo.svg            # primary wordmark/logo (SVG ideal)
-  logo-mark.svg       # icon-only version (for the header on mobile)
-  favicon.ico
-  og-image.jpg        # 1200×630 social share image
-```
-These get referenced in the header, footer, and metadata.
+| File | Role | Token |
+|------|------|-------|
+| `mabry-regular.otf` / `mabry-italic.otf` | Body text | `--font-sans` |
+| `GT-Alpina-Standard-Regular.otf` / `…-Italic.otf` | Headlines | `--font-display` |
+| `central-avenue-bold.otf` | Deco display accent | `--font-deco` |
+| `Cadet-Bold.otf` | Logo wordmark (reserve) | — |
 
----
+## Logo → `public/brand/`
+- `claudettes-badge.png` — circular badge, used in the site header.
+- The horizontal lockup is in `docs/brand/claudettes-logo-horizontal.pdf`
+  (vector). Needs a PNG/SVG export before it can be used on the web.
 
-### Colors live in code, not here
-The actual color values live as design tokens in `src/app/globals.css`. Once I
-read the brand guide PDF I'll set them there — every component re-themes from
-that one file.
+## Photography
+- `public/products/` — the five box shots, one per SKU
+  (`intro`, `sicilian`, `disco`, `lunchbox`, `sunday`). Referenced from
+  `supabase/seed.sql` and migration `0004_localize_product_images.sql`.
+- `public/lifestyle/` — editorial/mood shots (`milk-splash`, `choc-stack`,
+  `cooling-rack`, `choc-chip`, `box`, `box-overhead`) used on the homepage
+  editorial band and the About page.
+
+## Reference PDFs → `docs/brand/`
+The original brand-guide PDFs (`brand-guidelines-2024.pdf`, `color-palette.pdf`,
+`typography.pdf`, `claudettes-logo-horizontal.pdf`) are kept here for reference.
