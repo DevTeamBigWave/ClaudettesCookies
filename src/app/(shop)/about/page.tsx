@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 
 export const metadata: Metadata = {
@@ -20,6 +21,16 @@ export default function AboutPage() {
       <p className="mt-4 text-xl text-foreground/80">
         Moroccan-inspired flavors meet healthy eats.
       </p>
+
+      <div className="relative mt-8 aspect-[16/10] w-full overflow-hidden rounded-3xl shadow-xl">
+        <Image
+          src="/lifestyle/choc-stack.jpeg"
+          alt="A stack of chocolate-dipped Claudette's cookies on a ceramic plate"
+          fill
+          sizes="(max-width: 768px) 100vw, 720px"
+          className="object-cover"
+        />
+      </div>
 
       <div className="mt-8 space-y-5 text-lg leading-relaxed text-foreground/90">
         <p>

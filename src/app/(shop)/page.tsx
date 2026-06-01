@@ -96,6 +96,32 @@ export default async function HomePage() {
           ))}
         </div>
       </section>
+
+      {/* Editorial band */}
+      <section className="container pb-16">
+        <div className="relative overflow-hidden rounded-3xl">
+          <div className="relative aspect-[21/9] w-full">
+            <Image
+              src="/lifestyle/milk-splash.jpeg"
+              alt="A Claudette's cookie dropping into a glass of milk, fresh batch cooling behind"
+              fill
+              sizes="(max-width: 1024px) 100vw, 1024px"
+              className="object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/30 to-transparent" />
+          </div>
+          <div className="absolute inset-0 flex flex-col justify-center gap-4 p-8 md:p-12">
+            <h2 className="max-w-md font-display text-3xl font-semibold leading-tight text-white md:text-4xl">
+              The way cookies were made before the industrial revolution.
+            </h2>
+            <div>
+              <Button asChild size="lg">
+                <Link href="/about">Read our story</Link>
+              </Button>
+            </div>
+          </div>
+        </div>
+      </section>
     </>
   );
 }

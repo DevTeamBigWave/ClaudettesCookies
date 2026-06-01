@@ -42,12 +42,13 @@ insert into products (id, handle, title, subtitle, description, status, price_ce
 on conflict (id) do nothing;
 
 -- ---- Images ---------------------------------------------------------------
+-- Self-hosted in /public/products (re-hosted from the live store's CDN).
 insert into product_images (product_id, url, alt, position) values
-  ('22222222-2222-2222-2222-222222222201', 'https://cdn.shopify.com/s/files/1/0678/6367/4963/files/ClaudettesCookies_Preview-3.webp?v=1772826533', 'The Intro box', 0),
-  ('22222222-2222-2222-2222-222222222202', 'https://cdn.shopify.com/s/files/1/0678/6367/4963/files/ClaudettesCookies_Preview-5.webp?v=1772827191', 'The Sicilian Stash box', 0),
-  ('22222222-2222-2222-2222-222222222203', 'https://cdn.shopify.com/s/files/1/0678/6367/4963/files/ClaudettesCookies_Preview-4.webp?v=1772826775', 'The Disco Drop box', 0),
-  ('22222222-2222-2222-2222-222222222204', 'https://cdn.shopify.com/s/files/1/0678/6367/4963/files/ClaudettesCookies_Preview-6.webp?v=1772827010', 'The Lunchbox box', 0),
-  ('22222222-2222-2222-2222-222222222205', 'https://cdn.shopify.com/s/files/1/0678/6367/4963/files/ClaudettesCookies_Preview-7_00e596cb-4aed-4407-8e91-21695f1d6ba9.jpg?v=1765945710', 'The Sunday Ritual box', 0)
+  ('22222222-2222-2222-2222-222222222201', '/products/intro.jpeg', 'The Intro — a pink box with all four signature flavors', 0),
+  ('22222222-2222-2222-2222-222222222202', '/products/sicilian.jpeg', 'The Sicilian Stash — four pistachio cookies in a box', 0),
+  ('22222222-2222-2222-2222-222222222203', '/products/disco.jpeg', 'The Disco Drop — chocolate-dipped oat & banana cookies', 0),
+  ('22222222-2222-2222-2222-222222222204', '/products/lunchbox.jpeg', 'The Lunchbox — four Afterschool PB&J cookies', 0),
+  ('22222222-2222-2222-2222-222222222205', '/products/sunday.jpeg', 'The Sunday Ritual — chocolate chip walnut cookies', 0)
 on conflict do nothing;
 
 -- ---- Variants (single variant per product; real inventory counts) ----------
