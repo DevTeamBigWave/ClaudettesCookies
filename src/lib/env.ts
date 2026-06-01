@@ -11,12 +11,16 @@ const serverSchema = z.object({
   NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
   STRIPE_SECRET_KEY: z.string().min(1),
-  STRIPE_WEBHOOK_SECRET: z.string().min(1),
   NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: z.string().min(1),
-  RESEND_API_KEY: z.string().min(1),
-  RESEND_FROM_EMAIL: z.string().min(1),
+  // Feature-gated integrations: the storefront renders and takes payment without
+  // these. Routes that need them guard at call time (email is skipped, the
+  // Stripe webhook and cron endpoints fail closed) so a missing secret degrades
+  // one feature instead of 500-ing every page.
+  STRIPE_WEBHOOK_SECRET: z.string().min(1).optional(),
+  RESEND_API_KEY: z.string().min(1).optional(),
+  RESEND_FROM_EMAIL: z.string().min(1).optional(),
   RESEND_REPLY_TO: z.string().optional(),
-  CRON_SECRET: z.string().min(16),
+  CRON_SECRET: z.string().min(16).optional(),
   ADMIN_EMAILS: z.string().default(""),
 });
 

@@ -7,6 +7,9 @@ import { env } from "@/lib/env";
  */
 let _resend: Resend | null = null;
 function getResend(): Resend {
+  if (!env.RESEND_API_KEY) {
+    throw new Error("Email is not configured: set RESEND_API_KEY to enable sending.");
+  }
   if (!_resend) _resend = new Resend(env.RESEND_API_KEY);
   return _resend;
 }
@@ -20,6 +23,9 @@ export const resend = new Proxy({} as Resend, {
 export const EMAIL_FROM = env.RESEND_FROM_EMAIL;
 export const EMAIL_REPLY_TO = env.RESEND_REPLY_TO;
 
+/** Whether an email provider is configured. When false, sends are skipped. */
+export const emailEnabled = Boolean(env.RESEND_API_KEY && env.RESEND_FROM_EMAIL);
+
 type SendArgs = {
   to: string | string[];
   subject: string;
@@ -29,8 +35,12 @@ type SendArgs = {
 
 /** Thin wrapper so callers don't repeat from/reply-to and get uniform errors. */
 export async function sendEmail({ to, subject, html, headers }: SendArgs) {
+  if (!emailEnabled) {
+    console.warn(`[email] skipped (RESEND_API_KEY/RESEND_FROM_EMAIL not set): "${subject}"`);
+    return { skipped: true as const };
+  }
   return resend.emails.send({
-    from: EMAIL_FROM,
+    from: EMAIL_FROM!,
     to,
     subject,
     html,

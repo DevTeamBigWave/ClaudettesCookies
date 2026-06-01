@@ -1,5 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { resend, EMAIL_FROM, EMAIL_REPLY_TO } from "@/lib/resend";
+import { resend, EMAIL_FROM, EMAIL_REPLY_TO, emailEnabled } from "@/lib/resend";
 import { renderMarkdown } from "@/lib/markdown";
 import { env } from "@/lib/env";
 import type { EmailCampaign, EmailSubscriber } from "@/types/db";
@@ -41,6 +41,11 @@ function wrapBody(campaign: EmailCampaign, sub: EmailSubscriber): string {
  * Returns the number queued.
  */
 export async function sendCampaign(campaignId: string): Promise<{ sent: number }> {
+  if (!emailEnabled || !EMAIL_FROM) {
+    console.warn("[campaigns] skipped: email provider not configured (set RESEND_API_KEY).");
+    return { sent: 0 };
+  }
+  const fromEmail = EMAIL_FROM;
   const db = createAdminClient();
 
   // Claim the campaign atomically: only proceed if still draft/scheduled.
@@ -67,7 +72,7 @@ export async function sendCampaign(campaignId: string): Promise<{ sent: number }
       slice.map(async (sub) => {
         try {
           const { data } = await resend.emails.send({
-            from: campaign.from_name ? `${campaign.from_name} <${stripAddress(EMAIL_FROM)}>` : EMAIL_FROM,
+            from: campaign.from_name ? `${campaign.from_name} <${stripAddress(fromEmail)}>` : fromEmail,
             to: sub.email,
             subject: campaign.subject,
             html: wrapBody(campaign, sub),
