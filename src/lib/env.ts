@@ -10,7 +10,21 @@ const serverSchema = z.object({
   // which becomes `//rest/v1/…` and 404s as PGRST125). Normalize them away so a
   // copy-pasted URL with a stray `/` still works.
   NEXT_PUBLIC_SITE_URL: z.string().url().transform((s) => s.replace(/\/+$/, "")),
-  NEXT_PUBLIC_SUPABASE_URL: z.string().url().transform((s) => s.replace(/\/+$/, "")),
+  // Supabase clients want the bare project origin. The dashboard's "API URL"
+  // shows `…supabase.co/rest/v1/`, and pasting that whole thing makes the client
+  // build a doubled `/rest/v1//rest/v1/...` path that 404s as PGRST125. Reduce
+  // any pasted value to its origin so `/rest/v1/`, paths, and trailing slashes
+  // are all stripped.
+  NEXT_PUBLIC_SUPABASE_URL: z
+    .string()
+    .url()
+    .transform((s) => {
+      try {
+        return new URL(s).origin;
+      } catch {
+        return s.replace(/\/+$/, "");
+      }
+    }),
   NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
   STRIPE_SECRET_KEY: z.string().min(1),
