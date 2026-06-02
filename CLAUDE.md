@@ -6,7 +6,10 @@
   run in Supabase's SQL Editor. Offer a downloadable file as an extra only if asked.
 
 ## Stack / deploy
-- Next.js (App Router) storefront, deployed on **Railway** (`production.up.railway.app`).
+- Next.js (App Router) storefront, deployed on **Railway** at
+  `https://claudettescookies-production.up.railway.app` (note the `claudettescookies-`
+  prefix — the bare `production.up.railway.app` does NOT exist). Railway service
+  is `ClaudettesCookies`, listens on port 8080, deploys from `main`.
 - Data in **Supabase**; storefront reads run with the anon key under RLS.
 - Product/lifestyle photos are self-hosted in `public/products` and `public/lifestyle`
   (tall 2:3 portraits, 1365×2048) and referenced by local paths (e.g. `/products/intro.jpeg`).
