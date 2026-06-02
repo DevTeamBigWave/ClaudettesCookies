@@ -32,7 +32,7 @@ export default async function ProductPage({ params }: Params) {
 
   return (
     <div className="container grid gap-12 py-14 md:grid-cols-2">
-      <div className="relative aspect-square overflow-hidden rounded-3xl bg-secondary">
+      <div className="relative aspect-[4/5] overflow-hidden rounded-3xl bg-secondary">
         {image ? (
           <Image
             src={image.url}

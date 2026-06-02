@@ -69,6 +69,11 @@
   * {
     @apply border-border;
   }
+  /* Bump the root size so every rem-based font + spacing scales up a notch
+     for better legibility (esp. on phones). 16px → 18px. */
+  html {
+    font-size: 112.5%;
+  }
   body {
     @apply bg-background text-foreground antialiased;
     font-feature-settings: "rlig" 1, "calt" 1;

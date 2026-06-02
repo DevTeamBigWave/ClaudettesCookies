@@ -46,7 +46,7 @@ export default async function HomePage() {
           {hero && (
             <Link
               href={`/products/${hero.handle}`}
-              className="relative aspect-square w-full overflow-hidden rounded-3xl bg-secondary shadow-xl"
+              className="relative aspect-[4/5] w-full overflow-hidden rounded-3xl bg-secondary shadow-xl"
             >
               {hero.product_images?.[0] && (
                 <Image

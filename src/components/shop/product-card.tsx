@@ -13,7 +13,7 @@ export function ProductCard({ product }: { product: ProductWithRelations }) {
       href={`/products/${product.handle}`}
       className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-card transition-shadow hover:shadow-lg"
     >
-      <div className="relative aspect-square overflow-hidden bg-secondary">
+      <div className="relative aspect-[3/4] overflow-hidden bg-secondary">
         {image ? (
           <Image
             src={image.url}
