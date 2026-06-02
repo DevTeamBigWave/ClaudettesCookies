@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import { requireAdmin } from "@/lib/auth";
 import { AdminSidebar } from "@/components/admin/sidebar";
 
@@ -10,10 +12,16 @@ export default async function PanelLayout({ children }: { children: React.ReactN
     <div className="flex min-h-screen bg-secondary/30">
       <AdminSidebar />
       <div className="flex flex-1 flex-col">
-        <header className="flex h-16 items-center justify-between border-b border-border bg-card px-6">
-          <div className="md:hidden font-display text-lg font-semibold">Claudette&rsquo;s Admin</div>
-          <div className="ml-auto text-sm text-muted-foreground">
-            {profile.email} · <span className="font-medium capitalize">{profile.role}</span>
+        <header className="flex h-16 items-center justify-between gap-4 border-b border-border bg-card px-6">
+          <Link
+            href="/"
+            className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
+          >
+            <ArrowLeft className="size-4" /> Back to website
+          </Link>
+          <div className="text-sm text-muted-foreground">
+            <span className="hidden sm:inline">{profile.email} · </span>
+            <span className="font-medium capitalize">{profile.role}</span>
           </div>
         </header>
         <main className="flex-1 p-6">{children}</main>

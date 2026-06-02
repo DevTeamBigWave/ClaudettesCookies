@@ -37,7 +37,17 @@ export function SiteFooter() {
       <div className="border-t border-border">
         <div className="container flex flex-col items-center justify-between gap-2 py-6 text-xs text-muted-foreground sm:flex-row">
           <p>© {new Date().getFullYear()} Claudette&rsquo;s Cookies. All rights reserved.</p>
-          <p>Baked fresh in NYC.</p>
+          <p>
+            Baked fresh in NYC.
+            {/* Discreet staff entry — styled to read as plain fine print. */}
+            <Link
+              href="/admin"
+              aria-label="Admin sign in"
+              className="ml-1.5 cursor-default text-muted-foreground/45 no-underline transition-colors hover:text-primary"
+            >
+              admin
+            </Link>
+          </p>
         </div>
       </div>
     </footer>
