@@ -6,8 +6,11 @@ import { z } from "zod";
  * kept off the client bundle by never importing them into client components.
  */
 const serverSchema = z.object({
-  NEXT_PUBLIC_SITE_URL: z.string().url(),
-  NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
+  // Trailing slashes break downstream paths (Supabase builds `${url}/rest/v1/…`,
+  // which becomes `//rest/v1/…` and 404s as PGRST125). Normalize them away so a
+  // copy-pasted URL with a stray `/` still works.
+  NEXT_PUBLIC_SITE_URL: z.string().url().transform((s) => s.replace(/\/+$/, "")),
+  NEXT_PUBLIC_SUPABASE_URL: z.string().url().transform((s) => s.replace(/\/+$/, "")),
   NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
   STRIPE_SECRET_KEY: z.string().min(1),
