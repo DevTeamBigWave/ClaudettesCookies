@@ -1,9 +1,9 @@
 # Claudette's Cookies — working notes
 
 ## Preferences
-- **Always deliver SQL as a downloadable file** (via file attachment), never pasted
-  inline in chat. Applies to seeds, migrations, ad-hoc queries — anything the user
-  needs to run in Supabase's SQL Editor.
+- **Always deliver SQL as copy-paste text in the chat** (a fenced ```sql block the
+  user can select and copy), for every seed, migration, or ad-hoc query they need to
+  run in Supabase's SQL Editor. Offer a downloadable file as an extra only if asked.
 
 ## Stack / deploy
 - Next.js (App Router) storefront, deployed on **Railway** (`production.up.railway.app`).
