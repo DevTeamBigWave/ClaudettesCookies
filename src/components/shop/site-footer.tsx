@@ -21,6 +21,7 @@ export function SiteFooter() {
           <p className="mb-3 text-sm font-semibold">Shop</p>
           <ul className="space-y-2 text-sm text-muted-foreground">
             <li><Link href="/shop" className="hover:text-primary">All Boxes</Link></li>
+            <li><Link href="/clean-label" className="hover:text-primary">Clean Label</Link></li>
             <li><Link href="/gift-cards" className="hover:text-primary">Gift Cards</Link></li>
             <li><Link href="/blog" className="hover:text-primary">Journal</Link></li>
           </ul>

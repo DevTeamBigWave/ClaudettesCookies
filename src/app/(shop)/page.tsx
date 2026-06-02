@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
+import { CookiesBeforeChemistry } from "@/components/shop/cookies-before-chemistry";
 import { ProductCard } from "@/components/shop/product-card";
 import { getActiveProducts, getFeaturedProducts } from "@/lib/data/products";
 import { formatMoney } from "@/lib/utils";
@@ -16,6 +17,9 @@ export default async function HomePage() {
 
   return (
     <>
+      {/* Brand tagline band */}
+      <CookiesBeforeChemistry />
+
       {/* Hero */}
       <section className="relative overflow-hidden">
         <div className="container grid items-center gap-10 py-16 md:grid-cols-2 md:py-24">
