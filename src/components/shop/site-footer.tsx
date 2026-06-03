@@ -31,7 +31,7 @@ export function SiteFooter() {
           <p className="mb-3 text-sm font-semibold">Company</p>
           <ul className="space-y-2 text-sm text-muted-foreground">
             <li><Link href="/about" className="hover:text-primary">Our Story</Link></li>
-            <li><a href="mailto:claudettescookies@gmail.com" className="hover:text-primary">Contact</a></li>
+            <li><a href="mailto:hello@claudettescookies.shop" className="hover:text-primary">Contact</a></li>
           </ul>
         </div>
       </div>
