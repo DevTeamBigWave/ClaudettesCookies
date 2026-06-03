@@ -37,6 +37,9 @@ const serverSchema = z.object({
   RESEND_API_KEY: z.string().min(1).optional(),
   RESEND_FROM_EMAIL: z.string().min(1).optional(),
   RESEND_REPLY_TO: z.string().optional(),
+  // Powers the weekly auto-generated blog post (cron). Feature-gated: the route
+  // fails closed with a clear message when this isn't set.
+  ANTHROPIC_API_KEY: z.string().min(1).optional(),
   CRON_SECRET: z.string().min(16).optional(),
   ADMIN_EMAILS: z.string().default(""),
 });
