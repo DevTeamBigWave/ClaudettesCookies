@@ -41,6 +41,15 @@ const serverSchema = z.object({
   // fails closed with a clear message when this isn't set.
   ANTHROPIC_API_KEY: z.string().min(1).optional(),
   CRON_SECRET: z.string().min(16).optional(),
+  // Live FedEx shipping rates. Feature-gated: when any of these is missing the
+  // quote endpoint falls back to flat-rate shipping instead of failing. Defaults
+  // to FedEx's sandbox so test credentials are never billed; set
+  // FEDEX_ENV="production" to use live rates.
+  FEDEX_API_KEY: z.string().min(1).optional(),
+  FEDEX_API_SECRET: z.string().min(1).optional(),
+  FEDEX_ACCOUNT_NUMBER: z.string().min(1).optional(),
+  FEDEX_ORIGIN_ZIP: z.string().min(3).optional(),
+  FEDEX_ENV: z.enum(["sandbox", "production"]).default("sandbox"),
   ADMIN_EMAILS: z.string().default(""),
 });
 
