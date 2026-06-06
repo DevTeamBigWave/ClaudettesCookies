@@ -7,6 +7,7 @@ import {
   Ticket,
   Gift,
   FileText,
+  Plug,
   type LucideIcon,
 } from "lucide-react";
 
@@ -20,6 +21,7 @@ export const ADMIN_LINKS: { href: string; label: string; icon: LucideIcon }[] = 
   { href: "/admin/promotions", label: "Promotions", icon: Ticket },
   { href: "/admin/gift-cards", label: "Gift Cards", icon: Gift },
   { href: "/admin/blog", label: "Journal", icon: FileText },
+  { href: "/admin/integrations", label: "Integrations", icon: Plug },
 ];
 
 /** Whether a nav link should render as active for the given pathname. */
