@@ -1,28 +1,29 @@
-import crypto from "node:crypto";
 import { env } from "@/lib/env";
 
 /**
- * Minimal Google Calendar client using a service account — no SDK dependency.
+ * Minimal Google Calendar client using OAuth user credentials — no SDK, and no
+ * service-account key (which the org's `iam.disableServiceAccountKeyCreation`
+ * policy blocks anyway).
  *
- * Flow: sign a JWT with the service account's private key, exchange it for an
- * access token, then insert events via the Calendar REST API. The target
- * calendar must be shared with the service account's email ("Make changes to
- * events"). All config is optional; callers check `isCalendarConfigured()` and
- * skip silently when it's absent, so a missing key never breaks checkout.
+ * Flow: exchange a long-lived refresh token for a short-lived access token,
+ * then insert events via the Calendar REST API. The refresh token is minted
+ * once through the standard consent flow; the authenticating user owns the
+ * target calendar, so no sharing step is needed. All config is optional;
+ * callers check `isCalendarConfigured()` and skip silently when it's absent, so
+ * a missing credential never breaks checkout.
  */
 
 const TOKEN_URL = "https://oauth2.googleapis.com/token";
-const SCOPE = "https://www.googleapis.com/auth/calendar.events";
 
 export function isCalendarConfigured(): boolean {
   return Boolean(
-    env.GOOGLE_CALENDAR_CLIENT_EMAIL &&
-      env.GOOGLE_CALENDAR_PRIVATE_KEY &&
-      env.GOOGLE_CALENDAR_ID,
+    env.GOOGLE_OAUTH_CLIENT_ID &&
+      env.GOOGLE_OAUTH_CLIENT_SECRET &&
+      env.GOOGLE_OAUTH_REFRESH_TOKEN,
   );
 }
 
-// Tokens last ~1 hour; cache in module memory and refresh just before expiry.
+// Access tokens last ~1 hour; cache in module memory and refresh before expiry.
 let cachedToken: { value: string; expiresAt: number } | null = null;
 
 async function getAccessToken(): Promise<string> {
@@ -30,35 +31,19 @@ async function getAccessToken(): Promise<string> {
     return cachedToken.value;
   }
 
-  const now = Math.floor(Date.now() / 1000);
-  const header = Buffer.from(JSON.stringify({ alg: "RS256", typ: "JWT" })).toString("base64url");
-  const claims = Buffer.from(
-    JSON.stringify({
-      iss: env.GOOGLE_CALENDAR_CLIENT_EMAIL,
-      scope: SCOPE,
-      aud: TOKEN_URL,
-      iat: now,
-      exp: now + 3600,
-    }),
-  ).toString("base64url");
-
-  const signingInput = `${header}.${claims}`;
-  // Service-account keys often arrive with newlines escaped as literal "\n".
-  const privateKey = (env.GOOGLE_CALENDAR_PRIVATE_KEY ?? "").replace(/\\n/g, "\n");
-  const signature = crypto.sign("RSA-SHA256", Buffer.from(signingInput), privateKey).toString("base64url");
-  const assertion = `${signingInput}.${signature}`;
-
   const res = await fetch(TOKEN_URL, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
-      grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
-      assertion,
+      client_id: env.GOOGLE_OAUTH_CLIENT_ID!,
+      client_secret: env.GOOGLE_OAUTH_CLIENT_SECRET!,
+      refresh_token: env.GOOGLE_OAUTH_REFRESH_TOKEN!,
+      grant_type: "refresh_token",
     }),
   });
   if (!res.ok) {
     const body = await res.text().catch(() => "");
-    throw new Error(`Google token exchange failed (${res.status}): ${body.slice(0, 200)}`);
+    throw new Error(`Google token refresh failed (${res.status}): ${body.slice(0, 200)}`);
   }
   const json = (await res.json()) as { access_token: string; expires_in?: number };
   cachedToken = {
@@ -78,7 +63,7 @@ export interface CalendarEventInput {
 /** Insert an all-day event. Returns the created event id, or null. Throws on API error. */
 export async function createCalendarEvent(input: CalendarEventInput): Promise<string | null> {
   const token = await getAccessToken();
-  const calendarId = encodeURIComponent(env.GOOGLE_CALENDAR_ID!);
+  const calendarId = encodeURIComponent(env.GOOGLE_CALENDAR_ID);
   const res = await fetch(
     `https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events`,
     {

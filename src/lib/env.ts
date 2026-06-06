@@ -50,13 +50,16 @@ const serverSchema = z.object({
   FEDEX_ACCOUNT_NUMBER: z.string().min(1).optional(),
   FEDEX_ORIGIN_ZIP: z.string().min(3).optional(),
   FEDEX_ENV: z.enum(["sandbox", "production"]).default("sandbox"),
-  // Google Calendar order sync (service account). Feature-gated: when any is
-  // missing, paid orders simply aren't mirrored to the calendar. The private
-  // key is the service-account JSON's `private_key` (newlines may be escaped as
-  // \n; the client un-escapes them).
-  GOOGLE_CALENDAR_CLIENT_EMAIL: z.string().min(1).optional(),
-  GOOGLE_CALENDAR_PRIVATE_KEY: z.string().min(1).optional(),
-  GOOGLE_CALENDAR_ID: z.string().min(1).optional(),
+  // Google Calendar order sync (OAuth user credentials — keyless, no service
+  // account). Feature-gated: when the client id/secret/refresh token are
+  // missing, paid orders simply aren't mirrored to the calendar. The refresh
+  // token is minted once via the consent flow (see lib/google-calendar.ts).
+  // GOOGLE_CALENDAR_ID defaults to "primary" (the authenticating user's own
+  // calendar) when unset.
+  GOOGLE_OAUTH_CLIENT_ID: z.string().min(1).optional(),
+  GOOGLE_OAUTH_CLIENT_SECRET: z.string().min(1).optional(),
+  GOOGLE_OAUTH_REFRESH_TOKEN: z.string().min(1).optional(),
+  GOOGLE_CALENDAR_ID: z.string().min(1).default("primary"),
   ADMIN_EMAILS: z.string().default(""),
 });
 
