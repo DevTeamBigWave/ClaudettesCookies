@@ -5,6 +5,8 @@ import { env } from "@/lib/env";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendEmail } from "@/lib/resend";
 import { orderReceiptEmail, giftCardEmail } from "@/lib/emails";
+import { createCalendarEvent, isCalendarConfigured, ymdInTimeZone } from "@/lib/google-calendar";
+import { formatMoney } from "@/lib/utils";
 
 export const runtime = "nodejs";
 // Stripe needs the raw body to verify the signature — disable body parsing.
@@ -110,6 +112,28 @@ async function fulfillOrder(
         siteUrl: env.NEXT_PUBLIC_SITE_URL,
       }),
     }).catch((e) => console.error("Receipt email failed:", e));
+
+    // Mirror the paid order onto Google Calendar (best-effort, feature-gated).
+    if (isCalendarConfigured()) {
+      try {
+        const customer = session.customer_details?.name ?? order.email;
+        const itemLines = (items ?? []).map((i) => `${i.quantity}× ${i.title}`).join("\n");
+        const eventId = await createCalendarEvent({
+          summary: `🍪 Order #${order.order_number} — ${customer}`,
+          description:
+            `${itemLines}\n\n` +
+            `Total: ${formatMoney(order.total_cents)}\n` +
+            `Customer: ${customer} <${order.email}>\n` +
+            `${env.NEXT_PUBLIC_SITE_URL}/admin/orders`,
+          date: ymdInTimeZone(new Date()),
+        });
+        if (eventId) {
+          await db.from("orders").update({ google_event_id: eventId }).eq("id", orderId);
+        }
+      } catch (e) {
+        console.error("Calendar sync failed:", e);
+      }
+    }
   }
 }
 

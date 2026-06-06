@@ -50,6 +50,13 @@ const serverSchema = z.object({
   FEDEX_ACCOUNT_NUMBER: z.string().min(1).optional(),
   FEDEX_ORIGIN_ZIP: z.string().min(3).optional(),
   FEDEX_ENV: z.enum(["sandbox", "production"]).default("sandbox"),
+  // Google Calendar order sync (service account). Feature-gated: when any is
+  // missing, paid orders simply aren't mirrored to the calendar. The private
+  // key is the service-account JSON's `private_key` (newlines may be escaped as
+  // \n; the client un-escapes them).
+  GOOGLE_CALENDAR_CLIENT_EMAIL: z.string().min(1).optional(),
+  GOOGLE_CALENDAR_PRIVATE_KEY: z.string().min(1).optional(),
+  GOOGLE_CALENDAR_ID: z.string().min(1).optional(),
   ADMIN_EMAILS: z.string().default(""),
 });
 
