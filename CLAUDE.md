@@ -7,9 +7,11 @@
 
 ## Stack / deploy
 - Next.js (App Router) storefront hosted on **Railway**, served at the custom
-  domain **`https://claudettescookies.shop`** (set as `NEXT_PUBLIC_SITE_URL`; this
-  is the canonical URL used for webhooks, OAuth redirects, sitemap, and emails).
-  The Railway-generated `https://claudettescookies-production.up.railway.app` URL
+  domain **`https://www.claudettescookies.shop`** (set as `NEXT_PUBLIC_SITE_URL`;
+  this is the canonical URL used for webhooks, OAuth redirects, sitemap, and
+  emails). The apex **`claudettescookies.shop`** 301-redirects to `www` via
+  GoDaddy domain forwarding (GoDaddy can't CNAME the apex to Railway). The
+  Railway-generated `https://claudettescookies-production.up.railway.app` URL
   still resolves as the underlying origin. Railway service is `ClaudettesCookies`,
   listens on port 8080, deploys from `main`.
 - Data in **Supabase**; storefront reads run with the anon key under RLS.
