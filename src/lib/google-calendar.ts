@@ -222,6 +222,25 @@ export async function createCalendarEvent(input: CalendarEventInput): Promise<st
   return json.id ?? null;
 }
 
+/**
+ * Delete an event by id. Returns true on success (and treats already-gone
+ * 404/410 as success). Returns false when not connected. Throws on other errors.
+ */
+export async function deleteCalendarEvent(eventId: string): Promise<boolean> {
+  const token = await getAccessToken();
+  if (!token) return false; // not connected — nothing we can do
+
+  const calendarId = encodeURIComponent(env.GOOGLE_CALENDAR_ID);
+  const res = await fetch(
+    `https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events/${encodeURIComponent(eventId)}`,
+    { method: "DELETE", headers: { Authorization: `Bearer ${token}` } },
+  );
+  // 404/410 = the event is already gone; that's the desired end state.
+  if (res.ok || res.status === 404 || res.status === 410) return true;
+  const body = await res.text().catch(() => "");
+  throw new Error(`Google Calendar delete failed (${res.status}): ${body.slice(0, 200)}`);
+}
+
 /** Format a Date as YYYY-MM-DD in the given IANA timezone (en-CA renders that shape). */
 export function ymdInTimeZone(date: Date, timeZone = "America/New_York"): string {
   return new Intl.DateTimeFormat("en-CA", {

@@ -5,7 +5,7 @@ import { env } from "@/lib/env";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendEmail } from "@/lib/resend";
 import { orderReceiptEmail, giftCardEmail } from "@/lib/emails";
-import { createCalendarEvent, ymdInTimeZone } from "@/lib/google-calendar";
+import { createCalendarEvent, deleteCalendarEvent, ymdInTimeZone } from "@/lib/google-calendar";
 import { formatMoney } from "@/lib/utils";
 
 export const runtime = "nodejs";
@@ -52,6 +52,8 @@ export async function POST(req: Request) {
       } else if (orderId) {
         await fulfillOrder(db, orderId, session);
       }
+    } else if (event.type === "charge.refunded") {
+      await refundOrder(db, event.data.object as Stripe.Charge);
     }
   } catch (err) {
     console.error("Webhook handler error:", err);
@@ -134,6 +136,45 @@ async function fulfillOrder(
       console.error("Calendar sync failed:", e);
     }
   }
+}
+
+/**
+ * A refund came back from Stripe. On a *full* refund, mark the order refunded
+ * and remove the order's mirrored calendar event so it doesn't linger. Partial
+ * refunds are left alone (the order is still partly live).
+ */
+async function refundOrder(db: ReturnType<typeof createAdminClient>, charge: Stripe.Charge) {
+  if (!charge.refunded) return; // false for partial refunds
+
+  // The order id rides along on the charge metadata (set via payment_intent_data
+  // at checkout); fall back to matching the payment intent if it's absent.
+  let orderId = charge.metadata?.order_id;
+  if (!orderId && charge.payment_intent) {
+    const { data } = await db
+      .from("orders")
+      .select("id")
+      .eq("stripe_payment_intent_id", charge.payment_intent as string)
+      .maybeSingle();
+    orderId = data?.id;
+  }
+  if (!orderId) return;
+
+  const { data: order } = await db
+    .from("orders")
+    .select("id, google_event_id")
+    .eq("id", orderId)
+    .maybeSingle();
+  if (!order) return;
+
+  if (order.google_event_id) {
+    try {
+      await deleteCalendarEvent(order.google_event_id);
+    } catch (e) {
+      console.error("Calendar event delete failed:", e);
+    }
+  }
+
+  await db.from("orders").update({ status: "refunded", google_event_id: null }).eq("id", orderId);
 }
 
 async function fulfillGiftCard(
