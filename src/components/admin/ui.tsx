@@ -12,8 +12,8 @@ export function PageHeader({
   return (
     <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
       <div>
-        <h1 className="font-display text-2xl font-semibold">{title}</h1>
-        {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
+        <h1 className="font-display text-2xl font-semibold sm:text-3xl">{title}</h1>
+        {description && <p className="mt-1 text-sm text-muted-foreground sm:text-base">{description}</p>}
       </div>
       {action}
     </div>
@@ -30,10 +30,10 @@ export function StatCard({
   hint?: string;
 }) {
   return (
-    <div className="rounded-2xl border border-border bg-card p-5">
+    <div className="rounded-2xl border border-border bg-card p-5 sm:p-6">
       <p className="text-sm text-muted-foreground">{label}</p>
-      <p className="mt-1 font-display text-2xl font-semibold">{value}</p>
-      {hint && <p className="mt-1 text-xs text-muted-foreground">{hint}</p>}
+      <p className="mt-1 font-display text-3xl font-semibold sm:text-4xl">{value}</p>
+      {hint && <p className="mt-1.5 text-xs text-muted-foreground sm:text-sm">{hint}</p>}
     </div>
   );
 }

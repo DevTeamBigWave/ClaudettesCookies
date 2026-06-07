@@ -81,7 +81,7 @@ export function MobileAdminNav() {
               key={href}
               href={href}
               className={cn(
-                "flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition-colors",
+                "flex items-center gap-3 rounded-xl px-3 py-3 text-base font-medium transition-colors",
                 isActiveLink(href, pathname)
                   ? "bg-primary text-primary-foreground"
                   : "text-foreground/70 hover:bg-secondary",
