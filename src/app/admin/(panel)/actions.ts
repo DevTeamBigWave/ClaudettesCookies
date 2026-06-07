@@ -5,6 +5,7 @@ import { z } from "zod";
 import { requireAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendCampaign } from "@/lib/campaigns";
+import { generateAndPublishPost } from "@/lib/blog-generator";
 import { slugify } from "@/lib/utils";
 import type { DiscountType } from "@/types/db";
 
@@ -145,4 +146,14 @@ export async function setPostStatus(id: string, status: "draft" | "published") {
     .eq("id", id);
   revalidatePath("/admin/blog");
   revalidatePath("/blog");
+}
+
+/** Generate + publish one on-brand post via Claude, on demand from the admin. */
+export async function generateBlogPostNow() {
+  await requireAdmin();
+  const result = await generateAndPublishPost();
+  if (!result.ok) return { error: result.error };
+  revalidatePath("/admin/blog");
+  revalidatePath("/blog");
+  return { ok: true, title: result.title };
 }

@@ -2,7 +2,9 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { PageHeader, DataTable, StatusPill } from "@/components/admin/ui";
 import { PostForm } from "@/components/admin/post-form";
 import { PostStatusToggle } from "@/components/admin/post-status-toggle";
+import { GeneratePostButton } from "@/components/admin/generate-post-button";
 import { formatDate } from "@/lib/utils";
+import { env } from "@/lib/env";
 import type { BlogPost } from "@/types/db";
 
 export default async function BlogAdmin() {
@@ -14,7 +16,11 @@ export default async function BlogAdmin() {
 
   return (
     <>
-      <PageHeader title="Journal" description="Write and publish blog posts." />
+      <PageHeader
+        title="Journal"
+        description="Write and publish blog posts — or let Claude draft this week's."
+        action={<GeneratePostButton enabled={Boolean(env.ANTHROPIC_API_KEY)} />}
+      />
       <div className="grid gap-6 lg:grid-cols-[1fr_minmax(0,460px)]">
         <DataTable columns={["Title", "Status", "Tags", "Updated", ""]}>
           {((posts as BlogPost[]) ?? []).map((p) => (

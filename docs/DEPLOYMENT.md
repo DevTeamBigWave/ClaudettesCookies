@@ -40,6 +40,12 @@ Each job is an HTTP call carrying the shared secret:
 | --- | --- | --- |
 | `0 * * * *` (hourly) | `POST /api/cron/abandoned-cart` | `Authorization: Bearer $CRON_SECRET` |
 | `*/5 * * * *` | `POST /api/cron/scheduled-campaigns` | `Authorization: Bearer $CRON_SECRET` |
+| `0 13 * * 6` (Sat ~9am ET) | `POST /api/cron/generate-blog-post` | `Authorization: Bearer $CRON_SECRET` |
+
+The blog job needs `ANTHROPIC_API_KEY` set; it generates and publishes one
+on-brand Journal post per run. To kick off the first post immediately (or any
+one-off), hit it manually with the same curl, or use **Generate with Claude** on
+the admin Journal page.
 
 Example (Railway cron service running curl):
 ```bash
