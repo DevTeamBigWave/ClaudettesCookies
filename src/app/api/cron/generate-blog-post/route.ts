@@ -1,14 +1,14 @@
 import { NextResponse } from "next/server";
 import { isAuthorizedCron } from "@/lib/cron";
-import { generateAndPublishPost } from "@/lib/blog-generator";
+import { generateAndPublishPosts } from "@/lib/blog-generator";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-// Claude generation can take a while; give it room beyond the default.
-export const maxDuration = 300;
+// A drop is several Claude generations back-to-back; give it generous room.
+export const maxDuration = 800;
 
 /**
- * Generates and publishes one on-brand blog post via Claude.
+ * Generates and publishes a drop of on-brand Journal posts via Claude.
  * Scheduled for Saturday mornings (e.g. `0 13 * * 6` UTC = ~9am ET) by an
  * external scheduler that sends `Authorization: Bearer ${CRON_SECRET}`.
  */
@@ -18,7 +18,7 @@ export async function POST(req: Request) {
   }
 
   try {
-    const result = await generateAndPublishPost();
+    const result = await generateAndPublishPosts();
     if (!result.ok) {
       return NextResponse.json(result, { status: 500 });
     }

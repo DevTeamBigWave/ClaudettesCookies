@@ -3,9 +3,9 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { env } from "@/lib/env";
 
 /**
- * Generates one on-brand blog post with Claude and publishes it to `blog_posts`.
- * Called from the weekly cron (`/api/cron/generate-blog-post`). Service-role
- * write, so it runs server-side only.
+ * Generates a drop of on-brand Journal posts with Claude and publishes them to
+ * `blog_posts`. Called from the weekly cron (`/api/cron/generate-blog-post`) and
+ * the admin "Generate" button. Service-role write, so it runs server-side only.
  */
 
 const BRAND_CONTEXT = `You write the blog ("The Journal") for Claudette's Cookies,
@@ -57,23 +57,11 @@ function slugify(title: string): string {
     .slice(0, 60);
 }
 
-export async function generateAndPublishPost() {
-  if (!env.ANTHROPIC_API_KEY) {
-    return { ok: false as const, error: "ANTHROPIC_API_KEY not configured" };
-  }
+/** How many posts a single "drop" publishes (button + weekly cron). */
+export const DROP_SIZE = 3;
 
-  const db = createAdminClient();
-
-  // Give Claude the last few titles so it doesn't repeat itself.
-  const { data: recent } = await db
-    .from("blog_posts")
-    .select("title")
-    .order("published_at", { ascending: false })
-    .limit(10);
-  const recentTitles = (recent ?? []).map((r: { title: string }) => r.title);
-
-  const anthropic = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
-
+/** Ask Claude for one post, steering it away from `avoidTitles`. */
+async function generateOne(anthropic: Anthropic, avoidTitles: string[]): Promise<GeneratedPost> {
   const response = await anthropic.messages.create({
     model: "claude-opus-4-8",
     max_tokens: 8000,
@@ -83,13 +71,13 @@ export async function generateAndPublishPost() {
     messages: [
       {
         role: "user",
-        content: `Write this week's Journal post for Claudette's Cookies. Pick a fresh angle —
+        content: `Write a Journal post for Claudette's Cookies. Pick a fresh angle —
 an ingredient deep-dive, a flavor story, a "why we don't use X" explainer, a baking
 ritual, or a seasonal note. Make it genuinely useful or charming, not an ad.
 
 ${
-  recentTitles.length
-    ? `Do NOT repeat or closely overlap these recent titles:\n- ${recentTitles.join("\n- ")}`
+  avoidTitles.length
+    ? `Do NOT repeat or closely overlap these existing titles:\n- ${avoidTitles.join("\n- ")}`
     : ""
 }
 
@@ -101,27 +89,84 @@ Return the post as JSON matching the provided schema.`,
   // With structured outputs the first text block is schema-valid JSON.
   const textBlock = response.content.find((b) => b.type === "text");
   if (!textBlock || textBlock.type !== "text") {
-    return { ok: false as const, error: "No text content returned from Claude" };
+    throw new Error("No text content returned from Claude");
   }
-  const post = JSON.parse(textBlock.text) as GeneratedPost;
+  return JSON.parse(textBlock.text) as GeneratedPost;
+}
 
-  // Build a unique slug (title + ISO date keeps weekly posts from colliding).
+/** Find a free slug: `title-YYYY-MM-DD`, then `-2`, `-3`… if it's taken. */
+async function uniqueSlug(db: ReturnType<typeof createAdminClient>, title: string): Promise<string> {
   const datePart = new Date().toISOString().slice(0, 10);
-  const slug = `${slugify(post.title)}-${datePart}`;
+  const base = `${slugify(title)}-${datePart}`;
+  let candidate = base;
+  let n = 1;
+  for (;;) {
+    const { data } = await db.from("blog_posts").select("slug").eq("slug", candidate).maybeSingle();
+    if (!data) return candidate;
+    n += 1;
+    candidate = `${base}-${n}`;
+  }
+}
 
-  const { error } = await db.from("blog_posts").insert({
-    slug,
-    title: post.title,
-    excerpt: post.excerpt,
-    body: post.body,
-    tags: post.tags ?? [],
-    status: "published",
-    published_at: new Date().toISOString(),
-  });
+export type PublishedPost = { slug: string; title: string; excerpt: string };
 
-  if (error) {
-    return { ok: false as const, error: error.message };
+export type DropResult =
+  | { ok: false; error: string }
+  | { ok: true; published: PublishedPost[]; errors: string[] };
+
+/**
+ * Generates and publishes a drop of on-brand posts (default {@link DROP_SIZE}).
+ * Existing titles — plus those created earlier in this same drop — are fed back
+ * to Claude so the batch never repeats itself. Partial success is allowed: any
+ * posts that made it through are returned, with per-post failures in `errors`.
+ */
+export async function generateAndPublishPosts(count: number = DROP_SIZE): Promise<DropResult> {
+  if (!env.ANTHROPIC_API_KEY) {
+    return { ok: false, error: "ANTHROPIC_API_KEY not configured" };
   }
 
-  return { ok: true as const, slug, title: post.title };
+  const db = createAdminClient();
+
+  // Seed the avoid-list with recent titles so Claude doesn't repeat itself.
+  const { data: recent } = await db
+    .from("blog_posts")
+    .select("title")
+    .order("published_at", { ascending: false })
+    .limit(10);
+  const avoidTitles = (recent ?? []).map((r: { title: string }) => r.title);
+
+  const anthropic = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
+
+  const published: PublishedPost[] = [];
+  const errors: string[] = [];
+
+  for (let i = 0; i < count; i++) {
+    try {
+      const post = await generateOne(anthropic, avoidTitles);
+      avoidTitles.push(post.title); // keep the rest of the drop distinct
+      const slug = await uniqueSlug(db, post.title);
+
+      const { error } = await db.from("blog_posts").insert({
+        slug,
+        title: post.title,
+        excerpt: post.excerpt,
+        body: post.body,
+        tags: post.tags ?? [],
+        status: "published",
+        published_at: new Date().toISOString(),
+      });
+      if (error) {
+        errors.push(error.message);
+        continue;
+      }
+      published.push({ slug, title: post.title, excerpt: post.excerpt });
+    } catch (e) {
+      errors.push(e instanceof Error ? e.message : "Unknown generation error");
+    }
+  }
+
+  if (published.length === 0) {
+    return { ok: false, error: errors[0] ?? "No posts were generated" };
+  }
+  return { ok: true, published, errors };
 }

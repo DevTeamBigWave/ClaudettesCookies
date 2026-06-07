@@ -26,11 +26,11 @@ export function GeneratePostButton({ enabled }: { enabled: boolean }) {
             setMsg(null);
             const res = await generateBlogPostNow();
             if (res?.error) setError(res.error);
-            else setMsg(`Published “${res.title}”.`);
+            else setMsg(`Published ${res.count} new post${res.count === 1 ? "" : "s"}.`);
           })
         }
       >
-        {pending ? "Generating…" : "Generate with Claude"}
+        {pending ? "Generating…" : "Generate drop (3 posts)"}
       </Button>
       {msg && <p className="text-xs text-muted-foreground">{msg}</p>}
       {error && <p className="text-xs text-destructive">{error}</p>}

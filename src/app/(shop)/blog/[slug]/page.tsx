@@ -54,7 +54,7 @@ export default async function PostPage({ params }: Params) {
         </p>
       </header>
       <div
-        className="prose mt-8 max-w-none space-y-5 leading-relaxed [&_a]:text-primary [&_a]:underline [&_h2]:mt-8 [&_h2]:font-display [&_h2]:text-2xl [&_h2]:font-semibold"
+        className="prose mt-8 max-w-none space-y-5 leading-relaxed [&_a]:text-primary [&_a]:underline [&_h2]:mt-8 [&_h2]:font-display [&_h2]:text-2xl [&_h2]:font-semibold [&_h3]:mt-6 [&_h3]:font-display [&_h3]:text-xl [&_h3]:font-semibold [&_ul]:list-disc [&_ul]:space-y-1 [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:space-y-1 [&_ol]:pl-6 [&_li]:pl-1"
         dangerouslySetInnerHTML={{ __html: renderMarkdown(post.body) }}
       />
     </article>
