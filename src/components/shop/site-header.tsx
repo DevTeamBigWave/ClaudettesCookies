@@ -97,8 +97,17 @@ export function SiteHeader() {
         </Link>
       </div>
 
+      {/* Click-away backdrop — tapping below the menu folds it back up. */}
+      {open && (
+        <div
+          className="fixed inset-0 top-20 z-40 bg-black/20 md:hidden"
+          aria-hidden="true"
+          onClick={() => setOpen(false)}
+        />
+      )}
+
       {/* Mobile menu */}
-      <div className={cn("border-t border-border md:hidden", open ? "block" : "hidden")}>
+      <div className={cn("relative z-50 border-t border-border bg-background md:hidden", open ? "block" : "hidden")}>
         <nav className="container flex flex-col py-3">
           {NAV.map((item) => (
             <Link

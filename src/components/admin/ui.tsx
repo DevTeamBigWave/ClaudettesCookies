@@ -46,7 +46,9 @@ export function DataTable({
   children: React.ReactNode;
 }) {
   return (
-    <div className="overflow-x-auto rounded-2xl border border-border bg-card">
+    // min-w-0 lets this box shrink to its grid/flex cell so a wide table scrolls
+    // inside it instead of stretching the page past the right edge on mobile.
+    <div className="min-w-0 overflow-x-auto rounded-2xl border border-border bg-card">
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted-foreground">

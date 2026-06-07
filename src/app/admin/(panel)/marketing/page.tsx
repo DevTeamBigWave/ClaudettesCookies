@@ -41,7 +41,7 @@ export default async function MarketingPage() {
       </div>
 
       <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_minmax(0,440px)]">
-        <div>
+        <div className="min-w-0">
           <h2 className="mb-3 font-display text-lg font-semibold">Campaigns</h2>
           <DataTable columns={["Campaign", "Status", "Recipients", "Date", ""]}>
             {((campaigns as EmailCampaign[]) ?? []).map((c) => (
