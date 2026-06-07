@@ -1,12 +1,38 @@
 import { Fragment } from "react";
 import type { Metadata } from "next";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { FaqSection } from "@/components/shop/faq-section";
 import { CLEAN_LABEL } from "@/lib/data/clean-label";
 
 export const metadata: Metadata = {
   title: "The Clean Label",
   description:
     "Every ingredient in every Claudette's cookie, in plain sight. Certified-organic ingredients starred. No seed oils, no mystery chemistry.",
+  alternates: { canonical: "/clean-label" },
 };
+
+const FAQ = [
+  {
+    question: "Do you use seed oils?",
+    answer:
+      "Never. We bake with grass-fed butter — no canola, soybean, or other industrial seed oils.",
+  },
+  {
+    question: "What does the ★ mean?",
+    answer: "A ★ marks a certified-organic ingredient. We star every one so you can see exactly what's organic.",
+  },
+  {
+    question: "Are any of your cookies gluten-free?",
+    answer:
+      "Yes — the Disco Drop is naturally gluten-free, made with oats and bananas instead of wheat flour.",
+  },
+  {
+    question: "Do you use preservatives or 'natural flavors'?",
+    answer:
+      "No. No gums, no preservatives, no mystery natural flavors — just real ingredients you can pronounce.",
+  },
+];
 
 /** Renders an ingredient string, turning each `*` into a starred organic mark. */
 function Ingredients({ raw }: { raw: string }) {
@@ -59,6 +85,14 @@ export default function CleanLabelPage() {
             </div>
           </article>
         ))}
+      </div>
+
+      <FaqSection items={FAQ} className="mt-16" />
+
+      <div className="mt-8 text-center">
+        <Button asChild size="lg">
+          <Link href="/shop">Shop the cleanest cookie</Link>
+        </Button>
       </div>
     </div>
   );

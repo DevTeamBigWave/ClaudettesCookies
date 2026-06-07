@@ -2,12 +2,37 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
+import { FaqSection } from "@/components/shop/faq-section";
 
 export const metadata: Metadata = {
   title: "Our Story",
   description:
     "A family is only as strong as their story. Claudette's began in a small Rockaway kitchen — Moroccan-inspired flavors, healthy eats, and no compromise.",
+  alternates: { canonical: "/about" },
 };
+
+const FAQ = [
+  {
+    question: "Where do you ship?",
+    answer:
+      "Nationwide, anywhere in the US. Every box is baked to order and shipped fresh — never sitting on a shelf.",
+  },
+  {
+    question: "What makes Claudette's cookies different?",
+    answer:
+      "We bake with grass-fed butter and organic flour and never use seed oils, gums, or mystery 'natural flavors.' Every ingredient in every cookie is listed in plain sight on our Clean Label page.",
+  },
+  {
+    question: "Do you have gluten-free cookies?",
+    answer:
+      "Yes — our Disco Drop is naturally gluten-free, built on oats and bananas and dipped in chocolate. You can order a full box or build your own all-Disco box.",
+  },
+  {
+    question: "How big is a box, and what does it cost?",
+    answer:
+      "Every box is six cookies for $45 — whether it's a single flavor, the Intro sampler, or a Build Your Own mix.",
+  },
+];
 
 export default function AboutPage() {
   return (
@@ -52,6 +77,14 @@ export default function AboutPage() {
         </p>
       </div>
 
+      <p className="mt-6 text-lg leading-relaxed text-foreground/90">
+        Want to see exactly what goes in? Every ingredient in every cookie is listed on our{" "}
+        <Link href="/clean-label" className="text-primary underline">
+          Clean Label
+        </Link>
+        .
+      </p>
+
       <div className="mt-10 flex gap-3">
         <Button asChild size="lg">
           <Link href="/shop">Shop the cleanest cookie</Link>
@@ -60,6 +93,8 @@ export default function AboutPage() {
           <Link href="/blog">Read the Journal</Link>
         </Button>
       </div>
+
+      <FaqSection items={FAQ} className="mt-16" />
     </div>
   );
 }

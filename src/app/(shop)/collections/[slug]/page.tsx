@@ -4,12 +4,13 @@ import { notFound } from "next/navigation";
 import { ProductCard } from "@/components/shop/product-card";
 import { Button } from "@/components/ui/button";
 import { JsonLd } from "@/components/seo/json-ld";
+import { FaqSection } from "@/components/shop/faq-section";
 import {
   COLLECTIONS,
   getCollection,
   getCollectionProducts,
 } from "@/lib/data/collections";
-import { breadcrumbSchema, faqSchema, itemListSchema } from "@/lib/seo";
+import { breadcrumbSchema, itemListSchema } from "@/lib/seo";
 
 export const revalidate = 300;
 
@@ -54,7 +55,6 @@ export default async function CollectionPage({ params }: Params) {
             collection.title,
             products.map((p) => p.handle),
           ),
-          faqSchema(collection.faq),
         ]}
       />
 
@@ -88,23 +88,12 @@ export default async function CollectionPage({ params }: Params) {
         </p>
       )}
 
-      {/* FAQ */}
-      <section className="mx-auto mt-16 max-w-2xl">
-        <h2 className="font-display text-2xl font-semibold">Questions, answered</h2>
-        <dl className="mt-6 divide-y divide-border">
-          {collection.faq.map((f) => (
-            <div key={f.question} className="py-5">
-              <dt className="font-semibold">{f.question}</dt>
-              <dd className="mt-2 text-muted-foreground">{f.answer}</dd>
-            </div>
-          ))}
-        </dl>
-        <div className="mt-8 text-center">
-          <Button asChild size="lg">
-            <Link href="/shop">Shop all boxes</Link>
-          </Button>
-        </div>
-      </section>
+      <FaqSection items={collection.faq} className="mx-auto mt-16 max-w-2xl" />
+      <div className="mt-8 text-center">
+        <Button asChild size="lg">
+          <Link href="/shop">Shop all boxes</Link>
+        </Button>
+      </div>
     </div>
   );
 }
