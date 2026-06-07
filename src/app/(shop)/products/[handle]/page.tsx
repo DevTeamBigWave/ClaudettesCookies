@@ -5,6 +5,8 @@ import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { AddToCart } from "@/components/shop/add-to-cart";
 import { BuildYourOwn } from "@/components/shop/build-your-own";
+import { JsonLd } from "@/components/seo/json-ld";
+import { productSchema, breadcrumbSchema } from "@/lib/seo";
 import {
   getProductByHandle,
   getFlavors,
@@ -24,6 +26,13 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   return {
     title: product.seo_title ?? product.title,
     description: product.seo_description ?? product.subtitle ?? undefined,
+    alternates: { canonical: `/products/${product.handle}` },
+    openGraph: {
+      type: "website",
+      title: product.seo_title ?? product.title,
+      description: product.seo_description ?? product.subtitle ?? undefined,
+      images: product.product_images?.[0]?.url ? [product.product_images[0].url] : undefined,
+    },
   };
 }
 
@@ -40,6 +49,15 @@ export default async function ProductPage({ params }: Params) {
 
   return (
     <div className="container grid gap-12 py-14 md:grid-cols-2">
+      <JsonLd
+        data={[
+          productSchema(product),
+          breadcrumbSchema([
+            { name: "Shop", path: "/shop" },
+            { name: product.title, path: `/products/${product.handle}` },
+          ]),
+        ]}
+      />
       <div className="relative aspect-[4/5] overflow-hidden rounded-3xl bg-secondary">
         {image ? (
           <Image

@@ -7,7 +7,7 @@ export const revalidate = 3600;
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = process.env.NEXT_PUBLIC_SITE_URL ?? "https://claudettescookies.shop";
 
-  const staticRoutes = ["", "/shop", "/gift-cards", "/blog", "/about"].map((path) => ({
+  const staticRoutes = ["", "/shop", "/gift-cards", "/blog", "/about", "/clean-label"].map((path) => ({
     url: `${base}${path}`,
     changeFrequency: "weekly" as const,
     priority: path === "" ? 1 : 0.7,

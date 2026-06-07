@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 import { getPostBySlug } from "@/lib/data/posts";
 import { renderMarkdown } from "@/lib/markdown";
 import { formatDate } from "@/lib/utils";
+import { JsonLd } from "@/components/seo/json-ld";
+import { articleSchema, breadcrumbSchema } from "@/lib/seo";
 
 export const revalidate = 300;
 
@@ -16,6 +18,13 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   return {
     title: post.seo_title ?? post.title,
     description: post.seo_description ?? post.excerpt ?? undefined,
+    alternates: { canonical: `/blog/${post.slug}` },
+    openGraph: {
+      type: "article",
+      title: post.seo_title ?? post.title,
+      description: post.seo_description ?? post.excerpt ?? undefined,
+      images: post.cover_image_url ? [post.cover_image_url] : undefined,
+    },
   };
 }
 
@@ -26,6 +35,15 @@ export default async function PostPage({ params }: Params) {
 
   return (
     <article className="container-prose py-14">
+      <JsonLd
+        data={[
+          articleSchema(post),
+          breadcrumbSchema([
+            { name: "Journal", path: "/blog" },
+            { name: post.title, path: `/blog/${post.slug}` },
+          ]),
+        ]}
+      />
       <Link href="/blog" className="text-sm font-medium text-primary hover:underline">
         ← Back to the Journal
       </Link>
