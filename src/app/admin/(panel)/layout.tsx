@@ -12,23 +12,27 @@ export default async function PanelLayout({ children }: { children: React.ReactN
   return (
     <div className="flex min-h-screen bg-secondary/30">
       <AdminSidebar />
-      <div className="flex flex-1 flex-col">
-        <header className="flex h-16 items-center justify-between gap-4 border-b border-border bg-card px-4 sm:px-6">
-          <div className="flex items-center gap-2">
+      {/* min-w-0 lets this column shrink to the viewport so wide children (e.g.
+          the orders table) scroll inside their own box instead of stretching the
+          whole layout past the screen edge. */}
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="flex h-16 items-center justify-between gap-3 border-b border-border bg-card px-4 sm:px-6">
+          <div className="flex min-w-0 items-center gap-3">
             <MobileAdminNav />
             <Link
               href="/"
-              className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
+              className="flex items-center gap-1.5 truncate text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
             >
-              <ArrowLeft className="size-4" /> Back to website
+              <ArrowLeft className="size-4 shrink-0" />
+              <span className="truncate">Back to website</span>
             </Link>
           </div>
-          <div className="text-sm text-muted-foreground">
+          <div className="shrink-0 text-sm text-muted-foreground">
             <span className="hidden sm:inline">{profile.email} · </span>
             <span className="font-medium capitalize">{profile.role}</span>
           </div>
         </header>
-        <main className="flex-1 p-4 sm:p-6">{children}</main>
+        <main className="min-w-0 flex-1 p-4 sm:p-6">{children}</main>
       </div>
     </div>
   );
