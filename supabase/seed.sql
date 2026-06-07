@@ -16,48 +16,48 @@ on conflict (id) do nothing;
 -- ---- Products (all $32.00 = 3200 cents) -----------------------------------
 insert into products (id, handle, title, subtitle, description, status, price_cents, currency, featured, allergens, position) values
   ('22222222-2222-2222-2222-222222222201', 'the-intro',
-   'The Intro — Meet the Family', 'Four Flavors. Zero Compromise.',
-   'Welcome to the new standard. We took the "chemistry" out of cookies and replaced it with the ingredients your grandmother would recognize. One box, all four of our signature flavors — the easiest way to find your new ritual.',
-   'active', 3200, 'USD', true, '{contains nuts}', 1),
+   'The Intro — Meet the Family', 'All Four Flavors. Six Cookies.',
+   'Welcome to the new standard. We took the "chemistry" out of cookies and replaced it with the ingredients your grandmother would recognize. One box, all four of our signature flavors — with the two crowd-favorites doubled up. Six cookies total: 2 Disco Drops, 2 Afterschool PB&Js, 1 Sicilian pistachio, and 1 Sunday Ritual chocolate chip. The easiest way to find your new ritual.',
+   'active', 4500, 'USD', true, '{contains nuts}', 1),
 
   ('22222222-2222-2222-2222-222222222202', 'the-sicilians',
    'The Sicilian Stash — For the Pistachio Purist', 'Saw it on the feed? This is the box.',
-   'We packed four of our luxurious Sicilian pistachio cookies into one box. No fillers, no distractions — just deep, roasted pistachio and a tender crumb. The box you were looking for.',
-   'active', 3200, 'USD', true, '{contains nuts}', 2),
+   'We packed six of our luxurious Sicilian pistachio cookies into one box. No fillers, no distractions — just deep, roasted pistachio and a tender crumb. The box you were looking for.',
+   'active', 4500, 'USD', true, '{contains nuts}', 2),
 
   ('22222222-2222-2222-2222-222222222203', 'the-disco-drop-your-morning-fuel-sorted',
    'The Disco Drop — Your Morning Fuel, Sorted.', 'The OG legend that started it all.',
-   'This box contains four of our dense, chewy, gluten-free Disco Biscuits. Packed with oats and bananas and dipped in chocolate — breakfast that happens to taste like dessert.',
-   'active', 3200, 'USD', false, '{gluten-free}', 3),
+   'This box contains six of our dense, chewy, gluten-free Disco Biscuits. Packed with oats and bananas and dipped in chocolate — breakfast that happens to taste like dessert.',
+   'active', 4500, 'USD', false, '{gluten-free}', 3),
 
   ('22222222-2222-2222-2222-222222222204', 'the-lunchbox-nostalgia-on-repeat',
    'The Lunchbox — Nostalgia on Repeat.', 'Why mess with perfection?',
-   'We took the classic peanut butter and jelly flavor profile and removed the junk. This box is loaded with four of our Afterschool cookies — the lunchbox memory, upgraded.',
-   'active', 3200, 'USD', false, '{contains nuts}', 4),
+   'We took the classic peanut butter and jelly flavor profile and removed the junk. This box is loaded with six of our Afterschool cookies — the lunchbox memory, upgraded.',
+   'active', 4500, 'USD', false, '{contains nuts}', 4),
 
   ('22222222-2222-2222-2222-222222222205', 'the-sunday-ritual-the-only-chocolate-chip-you-need',
    'The Sunday Ritual — The Only Chocolate Chip You Need.', 'Some things are classic for a reason.',
-   'This box is dedicated to The Sunday Morning — our heavy-hitting chocolate chip walnut cookie made with organic King Arthur flour. The only chocolate chip you need.',
-   'active', 3200, 'USD', true, '{contains nuts}', 5)
+   'This box is six of The Sunday Morning — our heavy-hitting chocolate chip walnut cookie made with organic King Arthur flour. The only chocolate chip you need.',
+   'active', 4500, 'USD', true, '{contains nuts}', 5)
 on conflict (id) do nothing;
 
 -- ---- Images ---------------------------------------------------------------
 -- Self-hosted in /public/products (re-hosted from the live store's CDN).
 insert into product_images (product_id, url, alt, position) values
-  ('22222222-2222-2222-2222-222222222201', '/products/intro.jpeg', 'The Intro — a pink box with all four signature flavors', 0),
-  ('22222222-2222-2222-2222-222222222202', '/products/sicilian.jpeg', 'The Sicilian Stash — four pistachio cookies in a box', 0),
+  ('22222222-2222-2222-2222-222222222201', '/products/intro.jpeg', 'The Intro — a branded box with all four signature flavors', 0),
+  ('22222222-2222-2222-2222-222222222202', '/products/sicilian.jpeg', 'The Sicilian Stash — six pistachio cookies in a box', 0),
   ('22222222-2222-2222-2222-222222222203', '/products/disco.jpeg', 'The Disco Drop — chocolate-dipped oat & banana cookies', 0),
-  ('22222222-2222-2222-2222-222222222204', '/products/lunchbox.jpeg', 'The Lunchbox — four Afterschool PB&J cookies', 0),
+  ('22222222-2222-2222-2222-222222222204', '/products/lunchbox.jpeg', 'The Lunchbox — six Afterschool PB&J cookies', 0),
   ('22222222-2222-2222-2222-222222222205', '/products/sunday.jpeg', 'The Sunday Ritual — chocolate chip walnut cookies', 0)
 on conflict do nothing;
 
 -- ---- Variants (single variant per product; real inventory counts) ----------
 insert into product_variants (id, product_id, title, sku, price_cents, inventory_qty, position) values
-  ('33333333-3333-3333-3333-333333333301', '22222222-2222-2222-2222-222222222201', 'Box of 4', 'CC-INTRO-4',   3200, 22, 0),
-  ('33333333-3333-3333-3333-333333333302', '22222222-2222-2222-2222-222222222202', 'Box of 4', 'CC-SICIL-4',   3200, 18, 0),
-  ('33333333-3333-3333-3333-333333333303', '22222222-2222-2222-2222-222222222203', 'Box of 4', 'CC-DISCO-4',   3200, 19, 0),
-  ('33333333-3333-3333-3333-333333333304', '22222222-2222-2222-2222-222222222204', 'Box of 4', 'CC-LUNCH-4',   3200, 19, 0),
-  ('33333333-3333-3333-3333-333333333305', '22222222-2222-2222-2222-222222222205', 'Box of 4', 'CC-SUNDAY-4',  3200, 18, 0)
+  ('33333333-3333-3333-3333-333333333301', '22222222-2222-2222-2222-222222222201', 'Box of 6', 'CC-INTRO-6',   4500, 22, 0),
+  ('33333333-3333-3333-3333-333333333302', '22222222-2222-2222-2222-222222222202', 'Box of 6', 'CC-SICIL-6',   4500, 18, 0),
+  ('33333333-3333-3333-3333-333333333303', '22222222-2222-2222-2222-222222222203', 'Box of 6', 'CC-DISCO-6',   4500, 19, 0),
+  ('33333333-3333-3333-3333-333333333304', '22222222-2222-2222-2222-222222222204', 'Box of 6', 'CC-LUNCH-6',   4500, 19, 0),
+  ('33333333-3333-3333-3333-333333333305', '22222222-2222-2222-2222-222222222205', 'Box of 6', 'CC-SUNDAY-6',  4500, 18, 0)
 on conflict (id) do nothing;
 
 -- ---- Collection membership ------------------------------------------------
