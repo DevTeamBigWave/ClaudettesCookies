@@ -4,7 +4,13 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { AddToCart } from "@/components/shop/add-to-cart";
-import { getProductByHandle } from "@/lib/data/products";
+import { BuildYourOwn } from "@/components/shop/build-your-own";
+import {
+  getProductByHandle,
+  getFlavors,
+  BUILD_YOUR_OWN_HANDLE,
+  BOX_SIZE,
+} from "@/lib/data/products";
 import { formatMoney } from "@/lib/utils";
 
 export const revalidate = 300;
@@ -29,6 +35,8 @@ export default async function ProductPage({ params }: Params) {
   const variant = product.product_variants?.[0];
   const image = product.product_images?.[0];
   const soldOut = !variant || variant.inventory_qty <= 0;
+  const isBuildYourOwn = product.handle === BUILD_YOUR_OWN_HANDLE;
+  const flavors = isBuildYourOwn ? await getFlavors() : [];
 
   return (
     <div className="container grid gap-12 py-14 md:grid-cols-2">
@@ -83,20 +91,35 @@ export default async function ProductPage({ params }: Params) {
           </div>
         )}
 
-        <div className="mt-8 max-w-xs">
-          {variant && (
-            <AddToCart
-              soldOut={soldOut}
-              line={{
+        <div className="mt-8 max-w-sm">
+          {isBuildYourOwn && variant ? (
+            <BuildYourOwn
+              boxSize={BOX_SIZE}
+              flavors={flavors}
+              box={{
                 variantId: variant.id,
                 productId: product.id,
                 handle: product.handle,
                 title: product.title,
-                variantTitle: variant.title,
                 unitPriceCents: variant.price_cents,
                 image: image?.url ?? null,
               }}
             />
+          ) : (
+            variant && (
+              <AddToCart
+                soldOut={soldOut}
+                line={{
+                  variantId: variant.id,
+                  productId: product.id,
+                  handle: product.handle,
+                  title: product.title,
+                  variantTitle: variant.title,
+                  unitPriceCents: variant.price_cents,
+                  image: image?.url ?? null,
+                }}
+              />
+            )
           )}
           <p className="mt-3 text-center text-xs text-muted-foreground">
             Free shipping on orders over {formatMoney(5000)} · Baked to order

@@ -5,7 +5,13 @@ import { Check, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCart, type CartLine } from "@/store/cart";
 
-export function AddToCart({ line, soldOut }: { line: Omit<CartLine, "quantity">; soldOut: boolean }) {
+export function AddToCart({
+  line,
+  soldOut,
+}: {
+  line: Omit<CartLine, "quantity" | "key">;
+  soldOut: boolean;
+}) {
   const add = useCart((s) => s.add);
   const [added, setAdded] = useState(false);
 

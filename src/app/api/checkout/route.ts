@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { stripe } from "@/lib/stripe";
 import { env } from "@/lib/env";
 import { isDiscountValid, priceCart, type PricedLine } from "@/lib/pricing";
+import { BUILD_YOUR_OWN_HANDLE, BOX_SIZE } from "@/lib/data/products";
 import type { Discount } from "@/types/db";
 
 export const runtime = "nodejs";
@@ -13,7 +14,16 @@ const Body = z.object({
   email: z.string().email(),
   discountCode: z.string().trim().min(1).max(40).optional(),
   items: z
-    .array(z.object({ variantId: z.string().uuid(), quantity: z.number().int().min(1).max(50) }))
+    .array(
+      z.object({
+        variantId: z.string().uuid(),
+        quantity: z.number().int().min(1).max(50),
+        // Build-Your-Own box: the chosen flavors. Validated server-side below.
+        composition: z
+          .array(z.object({ handle: z.string().min(1), qty: z.number().int().min(1).max(BOX_SIZE) }))
+          .optional(),
+      }),
+    )
     .min(1),
 });
 
@@ -36,6 +46,20 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Could not load cart" }, { status: 500 });
   }
 
+  // Valid Build-Your-Own flavors (handle → short name), if any custom box is present.
+  const needsFlavors = items.some((i) => i.composition?.length);
+  const flavorNames = new Map<string, string>();
+  if (needsFlavors) {
+    const { data: flavors } = await db
+      .from("products")
+      .select("handle, title")
+      .eq("status", "active")
+      .eq("is_flavor", true);
+    for (const f of flavors ?? []) {
+      flavorNames.set(f.handle as string, (f.title as string).split("—")[0].trim());
+    }
+  }
+
   const priced: PricedLine[] = [];
   for (const item of items) {
     const v = variants.find((x) => x.id === item.variantId) as
@@ -56,11 +80,31 @@ export async function POST(req: Request) {
     };
     const image =
       product?.product_images?.sort((a, b) => a.position - b.position)[0]?.url ?? null;
+
+    // Build-Your-Own: require a valid 6-cookie composition and use it as the
+    // line's display title (price stays the box price — flat, set by the DB).
+    let variantTitle = v.title;
+    if (product?.handle === BUILD_YOUR_OWN_HANDLE || item.composition?.length) {
+      const picks = item.composition ?? [];
+      const cookieCount = picks.reduce((n, p) => n + p.qty, 0);
+      if (cookieCount !== BOX_SIZE) {
+        return NextResponse.json(
+          { error: `Build Your Own boxes need exactly ${BOX_SIZE} cookies.` },
+          { status: 422 },
+        );
+      }
+      const bad = picks.find((p) => !flavorNames.has(p.handle));
+      if (bad) {
+        return NextResponse.json({ error: "That flavor is no longer available." }, { status: 409 });
+      }
+      variantTitle = picks.map((p) => `${p.qty}× ${flavorNames.get(p.handle)}`).join(", ");
+    }
+
     priced.push({
       variantId: v.id,
       productId: v.product_id,
       title: product?.title ?? "Cookie box",
-      variantTitle: v.title,
+      variantTitle,
       imageUrl: image,
       unitPriceCents: v.price_cents,
       quantity: item.quantity,

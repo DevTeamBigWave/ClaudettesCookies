@@ -25,6 +25,7 @@ export interface Product {
   compare_at_cents: number | null;
   currency: string;
   featured: boolean;
+  is_flavor: boolean;
   ingredients: string | null;
   allergens: string[] | null;
   seo_title: string | null;

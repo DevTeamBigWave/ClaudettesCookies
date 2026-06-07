@@ -32,7 +32,11 @@ export default function CartPage() {
         body: JSON.stringify({
           email,
           discountCode: code || undefined,
-          items: lines.map((l) => ({ variantId: l.variantId, quantity: l.quantity })),
+          items: lines.map((l) => ({
+            variantId: l.variantId,
+            quantity: l.quantity,
+            composition: l.composition?.map((p) => ({ handle: p.handle, qty: p.qty })),
+          })),
         }),
       });
       const data = await res.json();
@@ -63,7 +67,7 @@ export default function CartPage() {
         <h1 className="mb-8 font-display text-4xl font-semibold">Your bag</h1>
         <ul className="divide-y divide-border">
           {lines.map((l) => (
-            <li key={l.variantId} className="flex gap-4 py-5">
+            <li key={l.key} className="flex gap-4 py-5">
               <div className="relative size-24 shrink-0 overflow-hidden rounded-xl bg-secondary">
                 {l.image && <Image src={l.image} alt={l.title} fill className="object-cover" />}
               </div>
@@ -76,7 +80,7 @@ export default function CartPage() {
                   <div className="flex items-center rounded-full border border-border">
                     <button
                       className="grid size-8 place-items-center"
-                      onClick={() => setQty(l.variantId, l.quantity - 1)}
+                      onClick={() => setQty(l.key, l.quantity - 1)}
                       aria-label="Decrease"
                     >
                       <Minus className="size-3.5" />
@@ -84,7 +88,7 @@ export default function CartPage() {
                     <span className="w-8 text-center text-sm font-medium">{l.quantity}</span>
                     <button
                       className="grid size-8 place-items-center"
-                      onClick={() => setQty(l.variantId, l.quantity + 1)}
+                      onClick={() => setQty(l.key, l.quantity + 1)}
                       aria-label="Increase"
                     >
                       <Plus className="size-3.5" />
@@ -92,7 +96,7 @@ export default function CartPage() {
                   </div>
                   <button
                     className="text-muted-foreground hover:text-destructive"
-                    onClick={() => remove(l.variantId)}
+                    onClick={() => remove(l.key)}
                     aria-label="Remove"
                   >
                     <Trash2 className="size-4" />
