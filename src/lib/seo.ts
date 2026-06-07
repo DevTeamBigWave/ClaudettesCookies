@@ -91,6 +91,19 @@ export function articleSchema(post: BlogPost) {
   };
 }
 
+export function itemListSchema(name: string, handles: string[]) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name,
+    itemListElement: handles.map((handle, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      url: `${SITE}/products/${handle}`,
+    })),
+  };
+}
+
 export function faqSchema(items: { question: string; answer: string }[]) {
   return {
     "@context": "https://schema.org",
