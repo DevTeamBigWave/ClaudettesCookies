@@ -29,10 +29,31 @@ export async function updateVariantInventory(variantId: string, qty: number) {
 const DiscountInput = z.object({
   code: z.string().trim().min(2).max(40),
   type: z.enum(["percentage", "fixed_amount", "free_shipping"]),
-  value: z.coerce.number().int().min(0),
+  value: z.coerce.number().int().min(0).default(0),
   min_subtotal_cents: z.coerce.number().int().min(0).default(0),
   usage_limit: z.coerce.number().int().min(0).optional(),
+  ends_at: z.string().optional(),
+  one_time: z.preprocess((v) => v === "on" || v === true, z.boolean()).optional(),
+  once_per_customer: z.preprocess((v) => v === "on" || v === true, z.boolean()).optional(),
 });
+
+/** datetime-local string → ISO (UTC), or null when blank. */
+function toIso(v?: string): string | null {
+  return v && v.trim() ? new Date(v).toISOString() : null;
+}
+
+/** Shared insert/update payload from the validated form. */
+function discountPayload(d: z.infer<typeof DiscountInput>) {
+  return {
+    code: d.code.toUpperCase(),
+    type: d.type as DiscountType,
+    value: d.type === "percentage" ? Math.min(100, d.value) : d.value,
+    min_subtotal_cents: d.min_subtotal_cents,
+    usage_limit: d.one_time ? 1 : d.usage_limit && d.usage_limit > 0 ? d.usage_limit : null,
+    ends_at: toIso(d.ends_at),
+    once_per_customer: Boolean(d.once_per_customer),
+  };
+}
 
 export async function createDiscount(formData: FormData) {
   await requireAdmin();
@@ -40,18 +61,31 @@ export async function createDiscount(formData: FormData) {
   if (!parsed.success) return { error: "Check the discount fields." };
 
   const db = createAdminClient();
-  const { code, type, value, min_subtotal_cents, usage_limit } = parsed.data;
-  const { error } = await db.from("discounts").insert({
-    code: code.toUpperCase(),
-    type: type as DiscountType,
-    value: type === "percentage" ? Math.min(100, value) : value,
-    min_subtotal_cents,
-    usage_limit: usage_limit && usage_limit > 0 ? usage_limit : null,
-    active: true,
-  });
+  const { error } = await db.from("discounts").insert({ ...discountPayload(parsed.data), active: true });
   if (error) return { error: error.message };
   revalidatePath("/admin/promotions");
   return { ok: true };
+}
+
+export async function updateDiscount(id: string, formData: FormData) {
+  await requireAdmin();
+  const parsed = DiscountInput.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { error: "Check the discount fields." };
+
+  const db = createAdminClient();
+  const { error } = await db.from("discounts").update(discountPayload(parsed.data)).eq("id", id);
+  if (error) return { error: error.message };
+  revalidatePath("/admin/promotions");
+  return { ok: true };
+}
+
+export async function deleteDiscount(id: string) {
+  await requireAdmin();
+  const db = createAdminClient();
+  // Orders reference discounts with ON DELETE SET NULL, so this is safe; the
+  // human-readable discount_code stays on past orders.
+  await db.from("discounts").delete().eq("id", id);
+  revalidatePath("/admin/promotions");
 }
 
 export async function toggleDiscount(id: string, active: boolean) {

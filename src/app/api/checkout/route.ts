@@ -127,6 +127,20 @@ export async function POST(req: Request) {
     }
   }
 
+  // Enforce once-per-customer: reject if this email already redeemed the code
+  // on a paid/fulfilled order.
+  if (discount?.once_per_customer) {
+    const { count } = await db
+      .from("orders")
+      .select("id", { count: "exact", head: true })
+      .eq("email", email)
+      .eq("discount_id", discount.id)
+      .in("status", ["paid", "fulfilled"]);
+    if ((count ?? 0) > 0) {
+      return NextResponse.json({ error: "You've already used that code." }, { status: 422 });
+    }
+  }
+
   const cart = priceCart(priced, discount);
 
   // 3) Upsert the customer (guest checkout friendly).
