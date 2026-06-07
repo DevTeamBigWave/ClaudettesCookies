@@ -37,8 +37,8 @@ insert into products (id, handle, title, subtitle, description, status, price_ce
 
   ('22222222-2222-2222-2222-222222222204', 'the-lunchbox-nostalgia-on-repeat',
    'The Lunchbox — Nostalgia on Repeat.', 'Why mess with perfection?',
-   'We took the classic peanut butter and jelly flavor profile and removed the junk. This box is loaded with six of our Afterschool cookies — the lunchbox memory, upgraded.',
-   'active', 4500, 'USD', false, '{contains nuts}', 4, true),
+   'We took the classic peanut butter and jelly flavor profile and removed the junk. This box is loaded with six of our flourless, naturally gluten-free Afterschool cookies — the lunchbox memory, upgraded.',
+   'active', 4500, 'USD', false, '{gluten-free,contains nuts}', 4, true),
 
   ('22222222-2222-2222-2222-222222222205', 'the-sunday-ritual-the-only-chocolate-chip-you-need',
    'The Sunday Ritual — The Only Chocolate Chip You Need.', 'Some things are classic for a reason.',

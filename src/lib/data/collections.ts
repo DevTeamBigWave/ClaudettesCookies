@@ -52,23 +52,28 @@ export const COLLECTIONS: CollectionDef[] = [
     eyebrow: "No gluten, no compromise",
     title: "Gluten-Free Cookies, Delivered",
     intro: [
-      "Our Disco Drop is a dense, chewy, naturally gluten-free cookie built on oats and bananas and finished with a dip of chocolate — breakfast that tastes like dessert, with none of the chemistry.",
-      "Order a full box of six, or build your own box stacked entirely with Disco Drops. Shipped fresh nationwide.",
+      "Two of our flavors are naturally gluten-free. The Disco Drop is a dense, chewy cookie built on oats and bananas and dipped in chocolate; the Lunchbox is our flourless PB&J — homemade peanut butter and real fruit jam, no wheat in sight.",
+      "Order a full box of six, or build your own box stacked with either — shipped fresh nationwide, never a seed oil or gum to be found.",
     ],
     seoTitle: "Gluten-Free Cookies — Shipped Fresh Nationwide",
     seoDescription:
-      "Naturally gluten-free cookies made with oats, bananas, and real chocolate — no seed oils, baked to order, delivered anywhere in the US.",
+      "Naturally gluten-free cookies — chocolate-dipped oat & banana and flourless PB&J. No seed oils, baked to order, delivered anywhere in the US.",
     match: (p) => (p.allergens ?? []).some((a) => a.toLowerCase().includes("gluten-free")),
     faq: [
       {
-        question: "Are these cookies certified gluten-free?",
+        question: "Which cookies are gluten-free?",
         answer:
-          "Our Disco Drop is made without gluten-containing ingredients. It is baked in a kitchen that also handles wheat, so we describe it as naturally gluten-free rather than certified.",
+          "Two flavors: the Disco Drop (oats, bananas, chocolate) and the Lunchbox (a flourless PB&J made with homemade peanut butter and real fruit jam). Both are naturally gluten-free — no wheat flour.",
       },
       {
-        question: "Can I get a whole box of just the gluten-free flavor?",
+        question: "Are these cookies certified gluten-free?",
         answer:
-          "Yes — order the Disco Drop box for six, or use Build Your Own and select six Disco Drops.",
+          "They're made without gluten-containing ingredients, but baked in a kitchen that also handles wheat, so we describe them as naturally gluten-free rather than certified.",
+      },
+      {
+        question: "Can I get a whole box of just gluten-free cookies?",
+        answer:
+          "Yes — order the Disco Drop or the Lunchbox box for six, or use Build Your Own and fill it with either.",
       },
     ],
   },

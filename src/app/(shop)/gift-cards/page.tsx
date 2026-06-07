@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { GiftCardPreview } from "@/components/shop/gift-card-preview";
 import { cn, formatMoney } from "@/lib/utils";
 
 const PRESETS = [2500, 5000, 7500, 10000];
@@ -50,12 +51,11 @@ export default function GiftCardsPage() {
           The easiest way to send someone four flavors and zero compromise. Delivered by
           email, redeemable on anything in the shop, and it never crumbles in transit.
         </p>
-        <div className="mt-8 flex aspect-[16/10] max-w-md items-end rounded-3xl bg-gradient-to-br from-primary to-accent p-8 text-primary-foreground shadow-xl">
-          <div>
-            <p className="font-display text-2xl font-semibold">Claudette&rsquo;s</p>
-            <p className="text-sm opacity-90">Gift Card · {formatMoney(amount)}</p>
-          </div>
-        </div>
+        <GiftCardPreview
+          amount={amount}
+          recipientName={form.recipientName.trim() || undefined}
+          className="mt-8 max-w-md"
+        />
       </div>
 
       <form onSubmit={buy} className="rounded-2xl border border-border bg-card p-6">
