@@ -42,10 +42,12 @@ Each job is an HTTP call carrying the shared secret:
 | `*/5 * * * *` | `POST /api/cron/scheduled-campaigns` | `Authorization: Bearer $CRON_SECRET` |
 | `0 13 * * 6` (Sat ~9am ET) | `POST /api/cron/generate-blog-post` | `Authorization: Bearer $CRON_SECRET` |
 
-The blog job needs `ANTHROPIC_API_KEY` set; it generates and publishes one
-on-brand Journal post per run. To kick off the first post immediately (or any
-one-off), hit it manually with the same curl, or use **Generate with Claude** on
-the admin Journal page.
+The blog job needs `ANTHROPIC_API_KEY` set; it publishes a drop of Journal posts
+(3 by default) per run, then composes a Journal-roundup marketing email — folding
+in any offer set on the admin Email Marketing page — and saves it as a **draft**
+for review (never auto-sent). To kick off a drop immediately, hit it manually
+with the same curl, or use **Generate drop** on the admin Journal page (posts
+only; the email draft is produced by the Saturday cron).
 
 Example (Railway cron service running curl):
 ```bash

@@ -140,6 +140,32 @@ export async function sendCampaignNow(campaignId: string) {
   return result;
 }
 
+// ── Saturday email offer (drives the weekly Journal-roundup draft) ───────────
+const MarketingSettingsInput = z.object({
+  featured_discount_id: z.union([z.string().uuid(), z.literal("")]).optional(),
+  offer_note: z.string().max(1000).optional(),
+  offer_mode: z.enum(["add", "overwrite"]).default("add"),
+});
+
+export async function saveMarketingSettings(formData: FormData) {
+  await requireAdmin();
+  const parsed = MarketingSettingsInput.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { error: "Check the offer fields." };
+
+  const db = createAdminClient();
+  const { featured_discount_id, offer_note, offer_mode } = parsed.data;
+  const { error } = await db.from("marketing_settings").upsert({
+    id: 1,
+    featured_discount_id: featured_discount_id ? featured_discount_id : null,
+    offer_note: offer_note?.trim() ? offer_note.trim() : null,
+    offer_mode,
+    updated_at: new Date().toISOString(),
+  });
+  if (error) return { error: error.message };
+  revalidatePath("/admin/marketing");
+  return { ok: true };
+}
+
 // ── Blog ────────────────────────────────────────────────────────────────────
 const PostInput = z.object({
   title: z.string().trim().min(2).max(160),

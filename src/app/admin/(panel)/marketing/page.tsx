@@ -2,19 +2,28 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { PageHeader, StatCard, DataTable, StatusPill } from "@/components/admin/ui";
 import { CampaignForm } from "@/components/admin/campaign-form";
 import { CampaignSendButton } from "@/components/admin/campaign-send-button";
+import { SaturdayEmailCard } from "@/components/admin/saturday-email-card";
 import { formatDate } from "@/lib/utils";
-import type { EmailCampaign } from "@/types/db";
+import type { EmailCampaign, Discount, MarketingSettings } from "@/types/db";
 
 export default async function MarketingPage() {
   const db = createAdminClient();
 
-  const [{ count: subscribed }, { count: totalSubs }, { data: campaigns }, { data: openEvents }] =
-    await Promise.all([
-      db.from("email_subscribers").select("*", { count: "exact", head: true }).eq("status", "subscribed"),
-      db.from("email_subscribers").select("*", { count: "exact", head: true }),
-      db.from("email_campaigns").select("*").order("created_at", { ascending: false }).limit(50),
-      db.from("email_events").select("*", { count: "exact", head: true }).eq("type", "opened"),
-    ]);
+  const [
+    { count: subscribed },
+    { count: totalSubs },
+    { data: campaigns },
+    { data: openEvents },
+    { data: activeDiscounts },
+    { data: settings },
+  ] = await Promise.all([
+    db.from("email_subscribers").select("*", { count: "exact", head: true }).eq("status", "subscribed"),
+    db.from("email_subscribers").select("*", { count: "exact", head: true }),
+    db.from("email_campaigns").select("*").order("created_at", { ascending: false }).limit(50),
+    db.from("email_events").select("*", { count: "exact", head: true }).eq("type", "opened"),
+    db.from("discounts").select("id, code, type, value").eq("active", true).order("created_at", { ascending: false }),
+    db.from("marketing_settings").select("*").eq("id", 1).maybeSingle(),
+  ]);
 
   const sentCount = ((campaigns as EmailCampaign[]) ?? []).filter((c) => c.status === "sent").length;
 
@@ -60,7 +69,13 @@ export default async function MarketingPage() {
             )}
           </DataTable>
         </div>
-        <CampaignForm subscriberCount={subscribed ?? 0} />
+        <div className="space-y-6">
+          <SaturdayEmailCard
+            discounts={(activeDiscounts as Pick<Discount, "id" | "code" | "type" | "value">[]) ?? []}
+            settings={(settings as MarketingSettings) ?? null}
+          />
+          <CampaignForm subscriberCount={subscribed ?? 0} />
+        </div>
       </div>
     </>
   );

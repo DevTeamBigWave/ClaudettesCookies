@@ -188,6 +188,15 @@ export interface Profile {
   updated_at: string;
 }
 
+/** Single-row settings the Saturday email draft reads (featured promo + note). */
+export interface MarketingSettings {
+  id: number;
+  featured_discount_id: string | null;
+  offer_note: string | null;
+  offer_mode: "add" | "overwrite";
+  updated_at: string;
+}
+
 /** Table shape supabase-js expects (Row/Insert/Update/Relationships). */
 type Table<T> = { Row: T; Insert: Partial<T>; Update: Partial<T>; Relationships: [] };
 
@@ -209,6 +218,7 @@ export interface Database {
       blog_posts: Table<BlogPost>;
       email_subscribers: Table<EmailSubscriber>;
       email_campaigns: Table<EmailCampaign>;
+      marketing_settings: Table<MarketingSettings>;
       profiles: Table<Profile>;
     };
     Views: Record<string, never>;
