@@ -34,6 +34,17 @@ export default function ShopError({
           <Link href="/cart">Back to bag</Link>
         </Button>
       </div>
+
+      {/* Temporary: surfaces the real error so it can be screenshotted while we
+          track down the checkout crash. Safe to remove once resolved. */}
+      {(error?.message || error?.digest) && (
+        <details className="mt-8 w-full max-w-md text-left">
+          <summary className="cursor-pointer text-xs text-muted-foreground">Error details</summary>
+          <pre className="mt-2 overflow-auto whitespace-pre-wrap rounded-lg bg-secondary p-3 text-xs [overflow-wrap:anywhere]">
+{error?.message || "(no message)"}{error?.digest ? `\n\ndigest: ${error.digest}` : ""}
+          </pre>
+        </details>
+      )}
     </div>
   );
 }
