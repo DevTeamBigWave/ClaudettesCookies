@@ -52,7 +52,7 @@ export function GoogleIntegrationCard({
           <div>
             <p className="font-medium">Google Calendar</p>
             <p className="mt-0.5 text-sm text-muted-foreground">
-              Adds an all-day event for every paid order.
+              Adds an 8–11am bake block the day after each paid order.
             </p>
           </div>
         </div>
