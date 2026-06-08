@@ -4,11 +4,15 @@ import { OrderRow } from "@/components/admin/order-row";
 
 export default async function OrdersPage() {
   const db = createAdminClient();
-  const { data: orders } = await db
+  // select("*") instead of naming columns: keeps the whole list from blanking
+  // out if a newly-added column (e.g. delivery_status) hasn't been migrated in
+  // Supabase yet — missing columns just render as empty rather than erroring.
+  const { data: orders, error } = await db
     .from("orders")
-    .select("id, order_number, email, status, fulfillment, shipping_method, tracking_number, delivery_status, total_cents, created_at")
+    .select("*")
     .order("created_at", { ascending: false })
     .limit(100);
+  if (error) console.error("Orders list query failed:", error.message);
 
   return (
     <>
