@@ -1,7 +1,6 @@
-import Link from "next/link";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { PageHeader, DataTable, StatusPill } from "@/components/admin/ui";
-import { formatMoney, formatDate } from "@/lib/utils";
+import { PageHeader, DataTable } from "@/components/admin/ui";
+import { OrderRow } from "@/components/admin/order-row";
 
 export default async function OrdersPage() {
   const db = createAdminClient();
@@ -13,23 +12,10 @@ export default async function OrdersPage() {
 
   return (
     <>
-      <PageHeader title="Orders" description="Every order, newest first." />
+      <PageHeader title="Orders" description="Every order, newest first. Click a row to open it." />
       <DataTable columns={["Order", "Customer", "Payment", "Fulfillment", "Shipping", "Total", "Date"]}>
         {(orders ?? []).map((o) => (
-          <tr key={o.id} className="hover:bg-secondary/40">
-            <td className="px-4 py-3 font-medium">
-              <Link href={`/admin/orders/${o.id}`} className="hover:text-primary">#{o.order_number}</Link>
-            </td>
-            <td className="px-4 py-3 text-muted-foreground">{o.email}</td>
-            <td className="px-4 py-3"><StatusPill status={o.status} /></td>
-            <td className="px-4 py-3"><StatusPill status={o.fulfillment} /></td>
-            <td className="px-4 py-3 text-muted-foreground">
-              {o.shipping_method ?? "—"}
-              {o.tracking_number && <span className="block text-xs">📦 {o.tracking_number}</span>}
-            </td>
-            <td className="px-4 py-3 font-medium">{formatMoney(o.total_cents)}</td>
-            <td className="px-4 py-3 text-muted-foreground">{formatDate(o.created_at)}</td>
-          </tr>
+          <OrderRow key={o.id} order={o} />
         ))}
         {(!orders || orders.length === 0) && (
           <tr><td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">No orders yet.</td></tr>
