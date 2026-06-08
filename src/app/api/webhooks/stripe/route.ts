@@ -71,20 +71,34 @@ async function fulfillOrder(
   orderId: string,
   session: Stripe.Checkout.Session,
 ) {
+  // Shipping (and therefore the total) is only finalized inside the embedded
+  // checkout, so reconcile the order's amounts + chosen method from the session
+  // BEFORE finalizing — finalize_paid_order rolls total_cents into customer
+  // lifetime stats. Expand the selected shipping rate to recover its tier label
+  // and FedEx service code (stashed in metadata when we set the options).
+  const full = await stripe.checkout.sessions.retrieve(session.id, {
+    expand: ["shipping_cost.shipping_rate"],
+  });
+  const rate = full.shipping_cost?.shipping_rate;
+  const rateObj = rate && typeof rate !== "string" ? rate : null;
+  const reconciliation: Record<string, unknown> = {
+    shipping_cents: full.shipping_cost?.amount_total ?? 0,
+    shipping_method: rateObj?.display_name ?? null,
+    shipping_service: rateObj?.metadata?.service_type ?? null,
+    shipping_carrier: rateObj?.metadata?.carrier ?? null,
+  };
+  if (full.amount_total != null) reconciliation.total_cents = full.amount_total;
+  if (full.customer_details) {
+    reconciliation.shipping_address = full.customer_details as unknown as Record<string, unknown>;
+  }
+  await db.from("orders").update(reconciliation).eq("id", orderId);
+
   // Atomic: mark paid + decrement inventory + roll up stats (idempotent in SQL).
   const { data: didTransition } = await db.rpc("finalize_paid_order", {
     p_order_id: orderId,
     p_payment_intent: (session.payment_intent as string) ?? "",
   });
   if (!didTransition) return; // already finalized
-
-  // Persist shipping address if Stripe collected one.
-  if (session.customer_details) {
-    await db
-      .from("orders")
-      .update({ shipping_address: session.customer_details as unknown as Record<string, unknown> })
-      .eq("id", orderId);
-  }
 
   const { data: order } = await db
     .from("orders")

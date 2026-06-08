@@ -1,6 +1,12 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getFedExRates, isFedExConfigured, type ShippingOption } from "@/lib/fedex";
-import { FLAT_SHIPPING_CENTS } from "@/lib/pricing";
+import {
+  getFedExRates,
+  isFedExConfigured,
+  splitTiers,
+  type ShippingOption,
+  type TieredShippingOption,
+} from "@/lib/fedex";
+import { FLAT_SHIPPING_CENTS, FLAT_EXPRESS_SHIPPING_CENTS } from "@/lib/pricing";
 
 /**
  * Shared shipping logic for the quote endpoint (cart estimator) and checkout
@@ -67,6 +73,48 @@ export async function quoteShipping(opts: {
     console.error("FedEx rate lookup failed; using flat rate:", e);
     return { source: "flat", options: [FLAT_OPTION] };
   }
+}
+
+/** The two flat tiers used when FedEx can't quote a destination. */
+const FLAT_REGULAR_TIER: TieredShippingOption = {
+  serviceType: "FLAT",
+  label: "Regular",
+  tier: "Regular",
+  amountCents: FLAT_SHIPPING_CENTS,
+  transitDays: null,
+};
+const FLAT_EXPRESS_TIER: TieredShippingOption = {
+  serviceType: "FLAT_EXPRESS",
+  label: "Express",
+  tier: "Express",
+  amountCents: FLAT_EXPRESS_SHIPPING_CENTS,
+  transitDays: null,
+};
+
+/**
+ * The Regular + Express tiers for a destination, used by the embedded checkout.
+ * Live FedEx rates are collapsed into the two tiers; when FedEx isn't available
+ * or only returns one bucket, the missing tier is filled from a flat rate so the
+ * customer always sees both choices.
+ */
+export async function shippingTiersForZip(opts: {
+  db: Db;
+  destZip: string;
+  items: ShippableItem[];
+}): Promise<TieredShippingOption[]> {
+  const { source, options } = await quoteShipping(opts);
+  if (source === "flat") return [FLAT_REGULAR_TIER, FLAT_EXPRESS_TIER];
+
+  const { regular, express } = splitTiers(options);
+  const tiers: TieredShippingOption[] = [];
+  tiers.push(regular ?? FLAT_REGULAR_TIER);
+  // Only synthesize a flat Express if it's pricier than Regular, so the upgrade
+  // never costs less than the base tier.
+  const expressTier =
+    express ??
+    (FLAT_EXPRESS_TIER.amountCents > (regular?.amountCents ?? 0) ? FLAT_EXPRESS_TIER : null);
+  if (expressTier) tiers.push(expressTier);
+  return tiers;
 }
 
 /**

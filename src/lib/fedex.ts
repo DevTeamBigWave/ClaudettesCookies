@@ -25,6 +25,77 @@ export function isFedExConfigured(): boolean {
   );
 }
 
+/**
+ * True when, on top of rate credentials, the full ship-from contact + address
+ * needed to print a real FedEx label is configured. Gates the admin "Generate
+ * label" action so it degrades cleanly when the origin isn't set up.
+ */
+export function isFedExShipConfigured(): boolean {
+  return Boolean(
+    isFedExConfigured() &&
+      env.FEDEX_SHIP_FROM_NAME &&
+      env.FEDEX_SHIP_FROM_PHONE &&
+      env.FEDEX_SHIP_FROM_STREET &&
+      env.FEDEX_SHIP_FROM_CITY &&
+      env.FEDEX_SHIP_FROM_STATE &&
+      (env.FEDEX_SHIP_FROM_ZIP || env.FEDEX_ORIGIN_ZIP),
+  );
+}
+
+// FedEx service codes we treat as the "Express" tier. Everything else (ground
+// services) falls into "Regular". Ordered cheapest-intent first isn't needed —
+// we sort by price when picking.
+const EXPRESS_SERVICE_CODES = new Set([
+  "FIRST_OVERNIGHT",
+  "PRIORITY_OVERNIGHT",
+  "STANDARD_OVERNIGHT",
+  "FEDEX_2_DAY",
+  "FEDEX_2_DAY_AM",
+  "FEDEX_EXPRESS_SAVER",
+  "INTERNATIONAL_PRIORITY",
+  "INTERNATIONAL_ECONOMY",
+]);
+
+/** A FedEx-derived option re-badged as one of our two customer-facing tiers. */
+export interface TieredShippingOption extends ShippingOption {
+  /** The tier label shown at checkout. */
+  tier: "Regular" | "Express";
+}
+
+/**
+ * Collapse a list of live FedEx services into (at most) the two tiers we offer.
+ * Regular = cheapest ground service; Express = cheapest expedited service. When
+ * FedEx only returns one bucket we still surface what we have, so callers can
+ * decide whether to synthesize the missing tier from a flat rate.
+ */
+export function splitTiers(options: ShippingOption[]): {
+  regular: TieredShippingOption | null;
+  express: TieredShippingOption | null;
+} {
+  const cheapest = (list: ShippingOption[]) =>
+    list.length ? [...list].sort((a, b) => a.amountCents - b.amountCents)[0] : null;
+
+  const expressOpts = options.filter((o) => EXPRESS_SERVICE_CODES.has(o.serviceType));
+  const groundOpts = options.filter((o) => !EXPRESS_SERVICE_CODES.has(o.serviceType));
+
+  const regularPick = cheapest(groundOpts) ?? cheapest(options);
+  // Express must be a different service than Regular; if the only express option
+  // is also the regular pick, drop it so we don't show the same rate twice.
+  const expressPick =
+    cheapest(expressOpts) ??
+    cheapest(options.filter((o) => o.serviceType !== regularPick?.serviceType));
+
+  const regular: TieredShippingOption | null = regularPick
+    ? { ...regularPick, tier: "Regular", label: "Regular" }
+    : null;
+  const express: TieredShippingOption | null =
+    expressPick && expressPick.serviceType !== regular?.serviceType
+      ? { ...expressPick, tier: "Express", label: "Express" }
+      : null;
+
+  return { regular, express };
+}
+
 export interface ShippingOption {
   /** FedEx service code, e.g. "FEDEX_GROUND", "FEDEX_2_DAY". */
   serviceType: string;
@@ -155,4 +226,130 @@ export async function getFedExRates(opts: {
   }
 
   return options.sort((a, b) => a.amountCents - b.amountCents);
+}
+
+/** Destination contact + address for a shipment, as we store it on the order. */
+export interface LabelRecipient {
+  name: string;
+  phone?: string | null;
+  line1: string;
+  line2?: string | null;
+  city: string;
+  state: string;
+  postalCode: string;
+}
+
+export interface FedExLabel {
+  trackingNumber: string;
+  /** Base64-encoded PDF label, ready to write to storage. */
+  labelBase64: string;
+}
+
+/**
+ * Generate a real FedEx shipping label via the Ship API. Creates an actual
+ * shipment on the FedEx account and returns the tracking number plus the label
+ * PDF (base64). Throws on any transport/validation error so the admin route can
+ * surface it — unlike rating, we never silently fall back here.
+ */
+export async function createFedExLabel(opts: {
+  recipient: LabelRecipient;
+  weightLb: number;
+  /** FedEx service code; defaults to ground when the order's tier had none. */
+  serviceType?: string;
+}): Promise<FedExLabel> {
+  if (!isFedExShipConfigured()) {
+    throw new Error("FedEx Ship API isn't fully configured (missing ship-from address).");
+  }
+  const accessToken = await getAccessToken();
+  const fromZip = env.FEDEX_SHIP_FROM_ZIP || env.FEDEX_ORIGIN_ZIP!;
+  const serviceType = opts.serviceType && opts.serviceType !== "FLAT" ? opts.serviceType : "FEDEX_GROUND";
+
+  const body = {
+    labelResponseOptions: "LABEL",
+    accountNumber: { value: env.FEDEX_ACCOUNT_NUMBER },
+    requestedShipment: {
+      shipDatestamp: new Date().toISOString().slice(0, 10),
+      pickupType: "USE_SCHEDULED_PICKUP",
+      serviceType,
+      packagingType: "YOUR_PACKAGING",
+      blockInsightVisibility: false,
+      shipper: {
+        contact: {
+          personName: env.FEDEX_SHIP_FROM_NAME,
+          phoneNumber: env.FEDEX_SHIP_FROM_PHONE,
+          companyName: env.FEDEX_SHIP_FROM_NAME,
+        },
+        address: {
+          streetLines: [env.FEDEX_SHIP_FROM_STREET],
+          city: env.FEDEX_SHIP_FROM_CITY,
+          stateOrProvinceCode: env.FEDEX_SHIP_FROM_STATE,
+          postalCode: fromZip,
+          countryCode: "US",
+        },
+      },
+      recipients: [
+        {
+          contact: {
+            personName: opts.recipient.name,
+            phoneNumber: opts.recipient.phone || env.FEDEX_SHIP_FROM_PHONE,
+          },
+          address: {
+            streetLines: [opts.recipient.line1, opts.recipient.line2 ?? ""].filter(Boolean),
+            city: opts.recipient.city,
+            stateOrProvinceCode: opts.recipient.state,
+            postalCode: opts.recipient.postalCode,
+            countryCode: "US",
+            residential: true,
+          },
+        },
+      ],
+      shippingChargesPayment: {
+        paymentType: "SENDER",
+        payor: { responsibleParty: { accountNumber: { value: env.FEDEX_ACCOUNT_NUMBER } } },
+      },
+      labelSpecification: {
+        imageType: "PDF",
+        labelStockType: "PAPER_85X11_TOP_HALF_LABEL",
+      },
+      requestedPackageLineItems: [
+        { weight: { units: "LB", value: Math.max(0.1, Number(opts.weightLb.toFixed(2))) } },
+      ],
+    },
+  };
+
+  const res = await fetch(`${BASE}/ship/v1/shipments`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+      "X-locale": "en_US",
+    },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`FedEx label request failed (${res.status}): ${text.slice(0, 400)}`);
+  }
+
+  const json = (await res.json()) as {
+    output?: {
+      transactionShipments?: Array<{
+        masterTrackingNumber?: string;
+        pieceResponses?: Array<{
+          trackingNumber?: string;
+          packageDocuments?: Array<{ encodedLabel?: string; url?: string }>;
+        }>;
+      }>;
+    };
+  };
+
+  const shipment = json.output?.transactionShipments?.[0];
+  const piece = shipment?.pieceResponses?.[0];
+  const trackingNumber = piece?.trackingNumber ?? shipment?.masterTrackingNumber;
+  const labelBase64 = piece?.packageDocuments?.find((d) => d.encodedLabel)?.encodedLabel;
+
+  if (!trackingNumber || !labelBase64) {
+    throw new Error("FedEx returned no label/tracking number for the shipment.");
+  }
+  return { trackingNumber, labelBase64 };
 }

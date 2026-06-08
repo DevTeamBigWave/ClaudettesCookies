@@ -76,6 +76,12 @@ export interface Order {
   discount_id: string | null;
   discount_code: string | null;
   shipping_address: Record<string, unknown> | null;
+  shipping_method: string | null;
+  shipping_service: string | null;
+  shipping_carrier: string | null;
+  tracking_number: string | null;
+  label_path: string | null;
+  label_generated_at: string | null;
   stripe_session_id: string | null;
   stripe_payment_intent_id: string | null;
   notes: string | null;

@@ -50,6 +50,17 @@ const serverSchema = z.object({
   FEDEX_ACCOUNT_NUMBER: z.string().min(1).optional(),
   FEDEX_ORIGIN_ZIP: z.string().min(3).optional(),
   FEDEX_ENV: z.enum(["sandbox", "production"]).default("sandbox"),
+  // Ship-from contact + address, used only for generating real FedEx labels
+  // (the Ship API needs a full origin, not just a ZIP). Feature-gated on top of
+  // the rate credentials: `isFedExShipConfigured()` checks these before the
+  // admin "Generate label" action is offered. FEDEX_SHIP_FROM_ZIP falls back to
+  // FEDEX_ORIGIN_ZIP when unset.
+  FEDEX_SHIP_FROM_NAME: z.string().min(1).optional(),
+  FEDEX_SHIP_FROM_PHONE: z.string().min(1).optional(),
+  FEDEX_SHIP_FROM_STREET: z.string().min(1).optional(),
+  FEDEX_SHIP_FROM_CITY: z.string().min(1).optional(),
+  FEDEX_SHIP_FROM_STATE: z.string().length(2).optional(),
+  FEDEX_SHIP_FROM_ZIP: z.string().min(3).optional(),
   // Google Calendar order sync (OAuth user credentials — keyless, no service
   // account). Feature-gated: when the client id/secret/refresh token are
   // missing, paid orders simply aren't mirrored to the calendar. The refresh

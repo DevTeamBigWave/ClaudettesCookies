@@ -2,6 +2,22 @@ import type { Discount } from "@/types/db";
 
 export const FREE_SHIPPING_THRESHOLD_CENTS = 5000;
 export const FLAT_SHIPPING_CENTS = 700;
+// Express tier when live FedEx rates aren't available (credentials missing or
+// the carrier errored). Keeps the two-tier checkout intact with a flat upgrade.
+export const FLAT_EXPRESS_SHIPPING_CENTS = 1800;
+
+/** Whether an order qualifies for free shipping (threshold or a free-shipping
+ * discount). Centralized so checkout and the shipping endpoint agree. */
+export function qualifiesForFreeShipping(
+  subtotalCents: number,
+  discountCents: number,
+  discount: Discount | null,
+): boolean {
+  return (
+    subtotalCents - discountCents >= FREE_SHIPPING_THRESHOLD_CENTS ||
+    (discount?.type === "free_shipping" && subtotalCents >= discount.min_subtotal_cents)
+  );
+}
 
 export interface PricedLine {
   variantId: string;
