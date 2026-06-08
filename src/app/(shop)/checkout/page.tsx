@@ -164,12 +164,15 @@ function PaymentArea({ orderNumber }: { orderNumber: number | null }) {
   const [quoting, setQuoting] = useState(false);
   const [paying, setPaying] = useState(false);
   const [payError, setPayError] = useState<string | null>(null);
+  const [addressComplete, setAddressComplete] = useState(false);
+  const [paymentComplete, setPaymentComplete] = useState(false);
 
   // Re-quote shipping on our server whenever the address is complete. Wrapped in
   // runServerUpdate so the SDK refreshes the session (and its shippingOptions).
   const checkout = result.type === "success" ? result.checkout : null;
   const onAddressChange = useCallback(
     async (event: StripeAddressElementChangeEvent) => {
+      setAddressComplete(event.complete);
       if (!checkout || !event.complete) return;
       setQuoting(true);
       setShippingError(null);
@@ -212,19 +215,35 @@ function PaymentArea({ orderNumber }: { orderNumber: number | null }) {
   // tier (Regular/Express/Free shipping) selected after the address resolves.
   const selectedIsReal =
     !!co.shipping && co.shipping.shippingOption?.displayName !== PLACEHOLDER_SHIPPING;
-  const canPay = co.shippingOptions.length > 0 && selectedId !== null && selectedIsReal && !paying;
+  // Only enable Pay once the address, a real shipping tier, and the payment
+  // details are all complete — otherwise confirm() rejects and the button
+  // would otherwise have looked clickable.
+  const canPay =
+    addressComplete &&
+    paymentComplete &&
+    co.shippingOptions.length > 0 &&
+    selectedId !== null &&
+    selectedIsReal &&
+    !paying;
 
   async function pay() {
     setPaying(true);
     setPayError(null);
-    const res = await co.confirm({
-      returnUrl: `${window.location.origin}/checkout/success?order=${orderNumber ?? ""}`,
-    });
-    if (res.type === "error") {
-      setPayError(res.error.message);
+    try {
+      const res = await co.confirm({
+        returnUrl: `${window.location.origin}/checkout/success?order=${orderNumber ?? ""}`,
+      });
+      // On success the SDK redirects to returnUrl; on error we surface it and
+      // re-enable the button. A thrown/rejected confirm is caught below so the
+      // button can never get stuck on "Processing…".
+      if (res.type === "error") {
+        setPayError(res.error.message);
+        setPaying(false);
+      }
+    } catch (e) {
+      setPayError(e instanceof Error ? e.message : "Payment could not be completed. Please try again.");
       setPaying(false);
     }
-    // On success the SDK redirects to returnUrl.
   }
 
   return (
@@ -268,7 +287,7 @@ function PaymentArea({ orderNumber }: { orderNumber: number | null }) {
 
       <section className="rounded-2xl border border-border bg-card p-6">
         <h2 className="mb-4 font-display text-lg font-semibold">Payment</h2>
-        <PaymentElement />
+        <PaymentElement onChange={(e) => setPaymentComplete(e.complete)} />
       </section>
 
       <div className="rounded-2xl border border-border bg-card p-6">
