@@ -3,7 +3,14 @@ import type Stripe from "stripe";
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { stripe } from "@/lib/stripe";
-import { isDiscountValid, priceCart, qualifiesForFreeShipping, type PricedLine } from "@/lib/pricing";
+import {
+  isDiscountValid,
+  priceCart,
+  qualifiesForFreeShipping,
+  FLAT_SHIPPING_CENTS,
+  FLAT_EXPRESS_SHIPPING_CENTS,
+  type PricedLine,
+} from "@/lib/pricing";
 import { BUILD_YOUR_OWN_HANDLE, BOX_SIZE } from "@/lib/data/products";
 import type { Discount } from "@/types/db";
 
@@ -211,18 +218,40 @@ export async function POST(req: Request) {
     },
   }));
 
-  // Custom Checkout needs at least one shipping option up front to enable the
-  // shipping flow. This $0 placeholder is replaced by the real Regular/Express
-  // tiers (or "Free shipping") once the customer enters an address — see
-  // /api/checkout/shipping. `permissions.update_shipping_details: server_only`
-  // hands address+rate updates to our server so amounts can't be tampered with.
-  const placeholderShipping: Stripe.Checkout.SessionCreateParams.ShippingOption = {
-    shipping_rate_data: {
-      type: "fixed_amount",
-      fixed_amount: { amount: 0, currency: "usd" },
-      display_name: "Enter address for shipping",
-    },
-  };
+  // Fixed shipping tiers set at session creation. Flat for now (FedEx isn't live
+  // to quote per-address rates); free orders get a single $0 tier. Because these
+  // are set up front, we don't use server-only dynamic shipping — which keeps
+  // checkout simple and lets confirm() run with the address element mounted.
+  // (When FedEx production is enabled, switch back to address-driven rates.)
+  const shippingOptions: Stripe.Checkout.SessionCreateParams.ShippingOption[] = freeShipping
+    ? [
+        {
+          shipping_rate_data: {
+            type: "fixed_amount",
+            fixed_amount: { amount: 0, currency: "usd" },
+            display_name: "Free shipping",
+            metadata: { tier: "Free shipping", service_type: "FREE", carrier: "Flat" },
+          },
+        },
+      ]
+    : [
+        {
+          shipping_rate_data: {
+            type: "fixed_amount",
+            fixed_amount: { amount: FLAT_SHIPPING_CENTS, currency: "usd" },
+            display_name: "Regular",
+            metadata: { tier: "Regular", service_type: "FLAT", carrier: "Flat" },
+          },
+        },
+        {
+          shipping_rate_data: {
+            type: "fixed_amount",
+            fixed_amount: { amount: FLAT_EXPRESS_SHIPPING_CENTS, currency: "usd" },
+            display_name: "Express",
+            metadata: { tier: "Express", service_type: "FLAT_EXPRESS", carrier: "Flat" },
+          },
+        },
+      ];
 
   let session: Stripe.Checkout.Session;
   try {
@@ -232,12 +261,10 @@ export async function POST(req: Request) {
       customer_email: email,
       line_items: lineItems,
       shipping_address_collection: { allowed_countries: ["US"] },
-      shipping_options: [placeholderShipping],
-      permissions: { update_shipping_details: "server_only" },
+      shipping_options: shippingOptions,
       // Apply discount as a Stripe coupon so the displayed total matches our math.
       discounts:
         cart.discountCents > 0 ? [{ coupon: await ensureCoupon(cart.discountCents) }] : undefined,
-      // free_shipping is read back in /api/checkout/shipping to offer a $0 tier.
       metadata: { order_id: order.id, free_shipping: freeShipping ? "1" : "0" },
       payment_intent_data: { metadata: { order_id: order.id } },
     };
