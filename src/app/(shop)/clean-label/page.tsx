@@ -25,7 +25,7 @@ const FAQ = [
   {
     question: "Are any of your cookies gluten-free?",
     answer:
-      "Yes — the Disco Drop is naturally gluten-free, made with oats and bananas instead of wheat flour.",
+      "Yes — two flavors are naturally gluten-free: the Disco Drop (oats and bananas) and the Lunchbox, our flourless PB&J. Neither uses wheat flour.",
   },
   {
     question: "Do you use preservatives or 'natural flavors'?",
