@@ -107,7 +107,7 @@ async function fulfillOrder(
     .single();
   const { data: items } = await db
     .from("order_items")
-    .select("title, quantity, total_cents")
+    .select("title, variant_title, quantity, total_cents")
     .eq("order_id", orderId);
 
   if (order) {
@@ -133,7 +133,14 @@ async function fulfillOrder(
     // isn't connected; best-effort, so a failure never blocks fulfillment.
     try {
       const customer = session.customer_details?.name ?? order.email;
-      const itemLines = (items ?? []).map((i) => `${i.quantity}× ${i.title}`).join("\n");
+      // Include the exact box contents (Build Your Own stores its 6-cookie
+      // pick in variant_title) so the bake-day invite is a real prep list.
+      const itemLines = (items ?? [])
+        .map((i) => {
+          const head = `${i.quantity}× ${i.title}`;
+          return i.variant_title ? `${head}\n   • ${i.variant_title}` : head;
+        })
+        .join("\n");
       const eventId = await createCalendarEvent({
         summary: `🍪 Order #${order.order_number} — ${customer}`,
         description:

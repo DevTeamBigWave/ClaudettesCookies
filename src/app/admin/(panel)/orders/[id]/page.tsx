@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, FileText } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isFedExShipConfigured } from "@/lib/fedex";
 import { PageHeader, StatusPill } from "@/components/admin/ui";
@@ -55,7 +56,16 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
       <PageHeader
         title={`Order #${order.order_number}`}
         description={`${order.email} · ${formatDate(order.created_at)}`}
-        action={<StatusPill status={order.status} />}
+        action={
+          <div className="flex items-center gap-3">
+            <Button asChild variant="outline">
+              <a href={`/admin/packing-slip/${order.id}`} target="_blank" rel="noopener noreferrer">
+                <FileText className="size-4" /> Packing slip
+              </a>
+            </Button>
+            <StatusPill status={order.status} />
+          </div>
+        }
       />
 
       <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
