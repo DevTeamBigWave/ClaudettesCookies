@@ -56,10 +56,11 @@ export default function CheckoutPage() {
           })),
         }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Could not start checkout");
+      const data = await res.json().catch(() => ({}) as { clientSecret?: string; orderNumber?: number; error?: string });
+      if (!res.ok) throw new Error(data.error ?? `Could not start checkout (${res.status})`);
+      if (!data.clientSecret) throw new Error("Could not start checkout — please try again.");
       setClientSecret(data.clientSecret);
-      setOrderNumber(data.orderNumber);
+      setOrderNumber(data.orderNumber ?? null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not start checkout");
     } finally {

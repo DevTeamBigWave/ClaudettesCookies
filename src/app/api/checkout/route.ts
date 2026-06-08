@@ -224,24 +224,35 @@ export async function POST(req: Request) {
     },
   };
 
-  const params: CustomCheckoutCreateParams = {
-    mode: "payment",
-    ui_mode: "custom",
-    customer_email: email,
-    line_items: lineItems,
-    shipping_address_collection: { allowed_countries: ["US"] },
-    shipping_options: [placeholderShipping],
-    permissions: { update_shipping_details: "server_only" },
-    // Apply discount as a Stripe coupon so the displayed total matches our math.
-    discounts: cart.discountCents > 0 ? [{ coupon: await ensureCoupon(cart.discountCents) }] : undefined,
-    // free_shipping is read back in /api/checkout/shipping to offer a $0 tier.
-    metadata: { order_id: order.id, free_shipping: freeShipping ? "1" : "0" },
-    payment_intent_data: { metadata: { order_id: order.id } },
-  };
-
-  const session = await stripe.checkout.sessions.create(
-    params as unknown as Stripe.Checkout.SessionCreateParams,
-  );
+  let session: Stripe.Checkout.Session;
+  try {
+    const params: CustomCheckoutCreateParams = {
+      mode: "payment",
+      ui_mode: "custom",
+      customer_email: email,
+      line_items: lineItems,
+      shipping_address_collection: { allowed_countries: ["US"] },
+      shipping_options: [placeholderShipping],
+      permissions: { update_shipping_details: "server_only" },
+      // Apply discount as a Stripe coupon so the displayed total matches our math.
+      discounts:
+        cart.discountCents > 0 ? [{ coupon: await ensureCoupon(cart.discountCents) }] : undefined,
+      // free_shipping is read back in /api/checkout/shipping to offer a $0 tier.
+      metadata: { order_id: order.id, free_shipping: freeShipping ? "1" : "0" },
+      payment_intent_data: { metadata: { order_id: order.id } },
+    };
+    session = await stripe.checkout.sessions.create(
+      params as unknown as Stripe.Checkout.SessionCreateParams,
+    );
+  } catch (e) {
+    // Surface the real Stripe error instead of a bare 500 (which the browser
+    // would mask as an opaque JSON-parse failure).
+    console.error("Checkout session create failed:", e);
+    return NextResponse.json(
+      { error: e instanceof Error ? e.message : "Could not start payment" },
+      { status: 502 },
+    );
+  }
 
   await db.from("orders").update({ stripe_session_id: session.id }).eq("id", order.id);
 
