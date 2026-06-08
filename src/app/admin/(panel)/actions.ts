@@ -5,9 +5,9 @@ import { z } from "zod";
 import { requireAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendCampaign } from "@/lib/campaigns";
-import { generateAndPublishPosts } from "@/lib/blog-generator";
+import { startBackgroundDrop } from "@/lib/blog-generator";
 import { slugify } from "@/lib/utils";
-import type { DiscountType } from "@/types/db";
+import type { DiscountType, BlogGenerationJob } from "@/types/db";
 
 // ── Products ────────────────────────────────────────────────────────────────
 export async function setProductStatus(productId: string, status: "active" | "draft" | "archived") {
@@ -208,12 +208,25 @@ export async function setPostStatus(id: string, status: "draft" | "published") {
   revalidatePath("/blog");
 }
 
-/** Generate + publish a drop of on-brand posts via Claude, on demand from the admin. */
-export async function generateBlogPostNow() {
+/**
+ * Start a drop in the background and return its job id right away, so the admin
+ * can leave the page while Claude writes. Status is polled via
+ * {@link getLatestBlogJob}; published posts land in the table when it finishes.
+ */
+export async function startBlogDrop() {
   await requireAdmin();
-  const result = await generateAndPublishPosts();
-  if (!result.ok) return { error: result.error };
-  revalidatePath("/admin/blog");
-  revalidatePath("/blog");
-  return { ok: true, count: result.published.length };
+  return startBackgroundDrop();
+}
+
+/** Latest drop job (running/done/error) — drives the admin button's status. */
+export async function getLatestBlogJob() {
+  await requireAdmin();
+  const db = createAdminClient();
+  const { data } = await db
+    .from("blog_generation_jobs")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return (data as BlogGenerationJob) ?? null;
 }

@@ -5,21 +5,31 @@ import { PostStatusToggle } from "@/components/admin/post-status-toggle";
 import { GeneratePostButton } from "@/components/admin/generate-post-button";
 import { formatDate } from "@/lib/utils";
 import { env } from "@/lib/env";
-import type { BlogPost } from "@/types/db";
+import type { BlogPost, BlogGenerationJob } from "@/types/db";
 
 export default async function BlogAdmin() {
   const db = createAdminClient();
-  const { data: posts } = await db
-    .from("blog_posts")
-    .select("*")
-    .order("created_at", { ascending: false });
+  const [{ data: posts }, { data: job }] = await Promise.all([
+    db.from("blog_posts").select("*").order("created_at", { ascending: false }),
+    db
+      .from("blog_generation_jobs")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ]);
 
   return (
     <>
       <PageHeader
         title="Journal"
         description="Write and publish blog posts — or let Claude draft this week's."
-        action={<GeneratePostButton enabled={Boolean(env.ANTHROPIC_API_KEY)} />}
+        action={
+          <GeneratePostButton
+            enabled={Boolean(env.ANTHROPIC_API_KEY)}
+            initialJob={(job as BlogGenerationJob) ?? null}
+          />
+        }
       />
       <div className="grid gap-6 lg:grid-cols-[1fr_minmax(0,460px)]">
         <DataTable columns={["Title", "Status", "Tags", "Updated", ""]}>

@@ -146,6 +146,19 @@ export interface BlogPost {
   updated_at: string;
 }
 
+export type BlogGenerationStatus = "running" | "done" | "error";
+
+export interface BlogGenerationJob {
+  id: string;
+  status: BlogGenerationStatus;
+  requested_count: number;
+  published_count: number;
+  published_titles: string[];
+  error: string | null;
+  created_at: string;
+  finished_at: string | null;
+}
+
 export interface EmailSubscriber {
   id: string;
   email: string;
@@ -216,6 +229,7 @@ export interface Database {
       discounts: Table<Discount>;
       gift_cards: Table<GiftCard>;
       blog_posts: Table<BlogPost>;
+      blog_generation_jobs: Table<BlogGenerationJob>;
       email_subscribers: Table<EmailSubscriber>;
       email_campaigns: Table<EmailCampaign>;
       marketing_settings: Table<MarketingSettings>;

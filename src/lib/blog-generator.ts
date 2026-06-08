@@ -170,3 +170,74 @@ export async function generateAndPublishPosts(count: number = DROP_SIZE): Promis
   }
   return { ok: true, published, errors };
 }
+
+export type StartDropResult = { jobId: string } | { error: string };
+
+/**
+ * Kick off a drop in the background and return immediately with a job id. The
+ * actual generation ({@link generateAndPublishPosts}) runs detached, so the
+ * admin can navigate away while Claude writes — Railway runs a persistent Node
+ * process, so the promise keeps running after the action responds. Progress is
+ * tracked in `blog_generation_jobs`; the admin button polls the latest row.
+ */
+export async function startBackgroundDrop(count: number = DROP_SIZE): Promise<StartDropResult> {
+  if (!env.ANTHROPIC_API_KEY) {
+    return { error: "ANTHROPIC_API_KEY not configured" };
+  }
+
+  const db = createAdminClient();
+
+  // Don't stack drops — if one is already running, just hand back its id.
+  const { data: running } = await db
+    .from("blog_generation_jobs")
+    .select("id")
+    .eq("status", "running")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (running) return { jobId: running.id };
+
+  const { data: job, error } = await db
+    .from("blog_generation_jobs")
+    .insert({ status: "running", requested_count: count })
+    .select("id")
+    .single();
+  if (error || !job) return { error: error?.message ?? "Could not start generation job" };
+
+  void runDrop(job.id, count);
+  return { jobId: job.id };
+}
+
+/** Run a drop to completion and record the outcome on its job row. */
+async function runDrop(jobId: string, count: number): Promise<void> {
+  const db = createAdminClient();
+  try {
+    const result = await generateAndPublishPosts(count);
+    if (!result.ok) {
+      await db
+        .from("blog_generation_jobs")
+        .update({ status: "error", error: result.error, finished_at: new Date().toISOString() })
+        .eq("id", jobId);
+      return;
+    }
+    await db
+      .from("blog_generation_jobs")
+      .update({
+        status: "done",
+        published_count: result.published.length,
+        published_titles: result.published.map((p) => p.title),
+        error: result.errors.length ? result.errors.join("; ") : null,
+        finished_at: new Date().toISOString(),
+      })
+      .eq("id", jobId);
+  } catch (e) {
+    await db
+      .from("blog_generation_jobs")
+      .update({
+        status: "error",
+        error: e instanceof Error ? e.message : "Unknown generation error",
+        finished_at: new Date().toISOString(),
+      })
+      .eq("id", jobId);
+  }
+}
