@@ -4,7 +4,7 @@ import { stripe } from "@/lib/stripe";
 import { env } from "@/lib/env";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendEmail } from "@/lib/resend";
-import { orderReceiptEmail, giftCardEmail } from "@/lib/emails";
+import { orderReceiptEmail, giftCardEmail, newOrderEmail } from "@/lib/emails";
 import { createCalendarEvent, deleteCalendarEvent, bakeDayYmd } from "@/lib/google-calendar";
 import { formatMoney } from "@/lib/utils";
 
@@ -128,6 +128,33 @@ async function fulfillOrder(
         siteUrl: env.NEXT_PUBLIC_SITE_URL,
       }),
     }).catch((e) => console.error("Receipt email failed:", e));
+
+    // Notify the store of every new order, with the address + box details so
+    // they can start baking and packing. Best-effort; never blocks fulfillment.
+    const details = full.customer_details;
+    await sendEmail({
+      to: "hello@claudettescookies.shop",
+      subject: `New order #${order.order_number} — ${details?.name ?? order.email}`,
+      html: newOrderEmail({
+        orderNumber: order.order_number,
+        customerName: details?.name,
+        customerEmail: order.email,
+        phone: details?.phone,
+        items: (items ?? []).map((i) => ({
+          title: i.title,
+          variantTitle: i.variant_title,
+          quantity: i.quantity,
+          totalCents: i.total_cents,
+        })),
+        subtotalCents: order.subtotal_cents,
+        discountCents: order.discount_cents,
+        shippingCents: order.shipping_cents,
+        totalCents: order.total_cents,
+        shippingMethod: rateObj?.display_name ?? null,
+        address: details?.address ?? null,
+        siteUrl: env.NEXT_PUBLIC_SITE_URL,
+      }),
+    }).catch((e) => console.error("Store notification email failed:", e));
 
     // Mirror the paid order onto Google Calendar. No-ops when the integration
     // isn't connected; best-effort, so a failure never blocks fulfillment.

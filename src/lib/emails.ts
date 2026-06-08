@@ -121,6 +121,75 @@ export function orderReceiptEmail(opts: {
   );
 }
 
+/**
+ * Internal "new order" notification sent to the store on every paid order, with
+ * the full item list (including Build-Your-Own box contents), totals, and the
+ * shipping address — everything needed to start baking + packing.
+ */
+export function newOrderEmail(opts: {
+  orderNumber: number;
+  customerName?: string | null;
+  customerEmail: string;
+  phone?: string | null;
+  items: { title: string; variantTitle?: string | null; quantity: number; totalCents: number }[];
+  subtotalCents: number;
+  discountCents: number;
+  shippingCents: number;
+  totalCents: number;
+  shippingMethod?: string | null;
+  address?: {
+    line1?: string | null;
+    line2?: string | null;
+    city?: string | null;
+    state?: string | null;
+    postal_code?: string | null;
+    country?: string | null;
+  } | null;
+  siteUrl: string;
+}) {
+  const rows = opts.items
+    .map(
+      (i) =>
+        `<tr><td style="padding:6px 0;">${i.quantity}× ${i.title}${
+          i.variantTitle
+            ? `<br><span style="color:${COLORS.muted};font-size:12px;">${i.variantTitle}</span>`
+            : ""
+        }</td>
+         <td align="right" style="padding:6px 0;vertical-align:top;">${formatMoney(i.totalCents)}</td></tr>`,
+    )
+    .join("");
+  const line = (l: string, v: number, bold = false) =>
+    `<tr><td style="padding:4px 0;${bold ? "font-weight:700;" : `color:${COLORS.muted};`}">${l}</td>
+     <td align="right" style="padding:4px 0;${bold ? "font-weight:700;" : ""}">${formatMoney(v)}</td></tr>`;
+
+  const a = opts.address;
+  const addressHtml = a
+    ? `${opts.customerName ? `<strong style="color:${COLORS.ink};">${opts.customerName}</strong><br>` : ""}` +
+      `${a.line1 ?? ""}${a.line2 ? `, ${a.line2}` : ""}<br>` +
+      `${a.city ?? ""}, ${a.state ?? ""} ${a.postal_code ?? ""}<br>${a.country ?? ""}` +
+      `${opts.phone ? `<br>${opts.phone}` : ""}`
+    : "No shipping address on file.";
+
+  return emailShell(
+    `<h1 style="font-family:${SERIF};color:${COLORS.ink};font-size:24px;margin:0 0 4px;">New order #${opts.orderNumber} 🍪</h1>
+     <p style="color:${COLORS.muted};margin:0 0 20px;">${opts.customerName ?? opts.customerEmail} just placed an order${opts.shippingMethod ? ` · ${opts.shippingMethod}` : ""}.</p>
+     <table role="presentation" width="100%" style="font-size:14px;border-top:1px solid ${COLORS.divider};border-bottom:1px solid ${COLORS.divider};padding:8px 0;">
+       ${rows}
+     </table>
+     <table role="presentation" width="100%" style="font-size:14px;margin-top:12px;">
+       ${line("Subtotal", opts.subtotalCents)}
+       ${opts.discountCents > 0 ? line("Discount", -opts.discountCents) : ""}
+       ${line("Shipping", opts.shippingCents)}
+       ${line("Total", opts.totalCents, true)}
+     </table>
+     <h2 style="font-family:${SERIF};color:${COLORS.ink};font-size:16px;margin:24px 0 6px;">Ship to</h2>
+     <p style="color:${COLORS.ink};margin:0 0 4px;line-height:1.6;">${addressHtml}</p>
+     <p style="color:${COLORS.muted};margin:0;font-size:13px;">Customer: ${opts.customerEmail}</p>
+     <p style="margin:24px 0 0;">${btn(`${opts.siteUrl}/admin/orders`, "Open in admin")}</p>`,
+    `New order #${opts.orderNumber} — ${opts.customerName ?? opts.customerEmail}`,
+  );
+}
+
 export function orderShippedEmail(opts: {
   orderNumber: number;
   carrier: string;
