@@ -37,6 +37,9 @@ export default async function HomePage() {
               cookies were made before the industrial revolution. Moroccan-inspired flavors,
               shipped to your door.
             </p>
+            <p className="mt-3 text-sm font-semibold text-[hsl(var(--maroon))]">
+              Every box is six cookies — $45, baked to order.
+            </p>
             <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:flex-wrap">
               <Button asChild size="lg">
                 <Link href="/shop">Shop the cleanest cookie</Link>
@@ -63,7 +66,7 @@ export default async function HomePage() {
                 />
               )}
               <div className="absolute bottom-4 left-4 rounded-full bg-background/90 px-4 py-2 text-sm font-semibold shadow">
-                {hero.title} · {formatMoney(hero.price_cents)}
+                {hero.title} · 6 cookies · {formatMoney(hero.price_cents)}
               </div>
             </Link>
           )}
@@ -89,7 +92,10 @@ export default async function HomePage() {
       {/* Catalog */}
       <section className="container py-16">
         <div className="mb-8 flex items-end justify-between">
-          <h2 className="font-display text-3xl font-semibold">The signature boxes</h2>
+          <div>
+            <h2 className="font-display text-3xl font-semibold">The signature boxes</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Six cookies a box · $45 · baked to order.</p>
+          </div>
           <Link href="/shop" className="text-sm font-medium text-primary hover:underline">
             View all →
           </Link>
