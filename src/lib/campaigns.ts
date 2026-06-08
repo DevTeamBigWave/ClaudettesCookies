@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { resend, EMAIL_FROM, EMAIL_REPLY_TO, emailEnabled } from "@/lib/resend";
 import { renderMarkdown } from "@/lib/markdown";
+import { marketingEmail, brandMarkdownHtml } from "@/lib/emails";
 import { env } from "@/lib/env";
 import type { EmailCampaign, EmailSubscriber } from "@/types/db";
 
@@ -19,19 +20,22 @@ async function resolveRecipients(db: Db, segment: Segment): Promise<EmailSubscri
   return (data as EmailSubscriber[]) ?? [];
 }
 
-/** Wrap campaign body with an unsubscribe footer (one-click, tokenized). */
+/**
+ * Wrap a campaign body in the branded email shell (same card chrome as the
+ * transactional templates) with a one-click, tokenized unsubscribe footer.
+ * Markdown campaigns get their headings/links inline-styled to the brand;
+ * raw-HTML campaigns are assumed already styled and passed through as-is.
+ */
 function wrapBody(campaign: EmailCampaign, sub: EmailSubscriber): string {
-  const html = campaign.body_html?.trim()
+  const bodyHtml = campaign.body_html?.trim()
     ? campaign.body_html
-    : renderMarkdown(campaign.body_markdown ?? "");
+    : brandMarkdownHtml(renderMarkdown(campaign.body_markdown ?? ""));
   const unsubUrl = `${env.NEXT_PUBLIC_SITE_URL}/api/unsubscribe?token=${sub.unsubscribe_token}`;
-  return `${campaign.preheader ? `<div style="display:none">${campaign.preheader}</div>` : ""}
-    ${html}
-    <hr style="margin-top:32px;border:none;border-top:1px solid #e7dcc8"/>
-    <p style="font-size:12px;color:#8a7257">
-      You're receiving this because you signed up at Claudette's Cookies.
-      <a href="${unsubUrl}" style="color:#8a7257">Unsubscribe</a>.
-    </p>`;
+  return marketingEmail({
+    bodyHtml,
+    preheader: campaign.preheader ?? undefined,
+    unsubscribeUrl: unsubUrl,
+  });
 }
 
 /**
