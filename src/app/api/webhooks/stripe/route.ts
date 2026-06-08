@@ -5,7 +5,7 @@ import { env } from "@/lib/env";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendEmail } from "@/lib/resend";
 import { orderReceiptEmail, giftCardEmail } from "@/lib/emails";
-import { createCalendarEvent, deleteCalendarEvent, ymdInTimeZone } from "@/lib/google-calendar";
+import { createCalendarEvent, deleteCalendarEvent, bakeDayYmd } from "@/lib/google-calendar";
 import { formatMoney } from "@/lib/utils";
 
 export const runtime = "nodejs";
@@ -127,7 +127,8 @@ async function fulfillOrder(
           `Total: ${formatMoney(order.total_cents)}\n` +
           `Customer: ${customer} <${order.email}>\n` +
           `${env.NEXT_PUBLIC_SITE_URL}/admin/orders`,
-        date: ymdInTimeZone(new Date()),
+        // Bake day = the day after the order is placed, 8–11am store time.
+        date: bakeDayYmd(new Date()),
       });
       if (eventId) {
         await db.from("orders").update({ google_event_id: eventId }).eq("id", orderId);

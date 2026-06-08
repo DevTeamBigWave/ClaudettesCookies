@@ -184,16 +184,28 @@ function emailFromIdToken(idToken: string): string | null {
 
 // ── Event creation ────────────────────────────────────────────────────────────
 
+/** Store timezone used for the bake-day calendar block. */
+export const CAL_TIME_ZONE = "America/New_York";
+/** The bake window shown on the calendar (local store time). */
+const BAKE_START = "08:00:00";
+const BAKE_END = "11:00:00";
+
 export interface CalendarEventInput {
   summary: string;
   description?: string;
-  /** YYYY-MM-DD for an all-day event. */
+  /** YYYY-MM-DD (store time) the bake-window event should land on. */
   date: string;
 }
 
+/** The bake day for an order: the day after it's placed, in store time. */
+export function bakeDayYmd(placedAt: Date): string {
+  return nextDay(ymdInTimeZone(placedAt, CAL_TIME_ZONE));
+}
+
 /**
- * Insert an all-day event. Returns the created event id, or null when the
- * integration isn't connected (so callers can skip silently). Throws on API error.
+ * Insert a timed bake-window event (08:00–11:00 store time) on `input.date`.
+ * Returns the created event id, or null when the integration isn't connected
+ * (so callers can skip silently). Throws on API error.
  */
 export async function createCalendarEvent(input: CalendarEventInput): Promise<string | null> {
   const token = await getAccessToken();
@@ -208,9 +220,10 @@ export async function createCalendarEvent(input: CalendarEventInput): Promise<st
       body: JSON.stringify({
         summary: input.summary,
         description: input.description,
-        // All-day event: end date is exclusive, so it's the day after start.
-        start: { date: input.date },
-        end: { date: nextDay(input.date) },
+        // Timed bake block so it shows on the day's agenda, not as an all-day
+        // banner that's easy to miss. timeZone makes the naive time local.
+        start: { dateTime: `${input.date}T${BAKE_START}`, timeZone: CAL_TIME_ZONE },
+        end: { dateTime: `${input.date}T${BAKE_END}`, timeZone: CAL_TIME_ZONE },
       }),
     },
   );
