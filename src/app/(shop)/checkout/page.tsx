@@ -166,6 +166,11 @@ function PaymentArea({ orderNumber }: { orderNumber: number | null }) {
   const [payError, setPayError] = useState<string | null>(null);
   const [addressComplete, setAddressComplete] = useState(false);
   const [paymentComplete, setPaymentComplete] = useState(false);
+  // Stripe requires the ShippingAddressElement to be UNMOUNTED before confirm()
+  // when permissions.update_shipping_details = server_only. So checkout is two
+  // phases: collect address (element mounted) → lock it (element unmounted) →
+  // payment + Pay.
+  const [addressLocked, setAddressLocked] = useState(false);
 
   // Re-quote shipping on our server whenever the address is complete. Wrapped in
   // runServerUpdate so the SDK refreshes the session (and its shippingOptions).
@@ -218,13 +223,12 @@ function PaymentArea({ orderNumber }: { orderNumber: number | null }) {
   // Only enable Pay once the address, a real shipping tier, and the payment
   // details are all complete — otherwise confirm() rejects and the button
   // would otherwise have looked clickable.
-  const canPay =
-    addressComplete &&
-    paymentComplete &&
-    co.shippingOptions.length > 0 &&
-    selectedId !== null &&
-    selectedIsReal &&
-    !paying;
+  const realShippingSelected =
+    co.shippingOptions.length > 0 && selectedId !== null && selectedIsReal;
+  // Phase 1 → can move to payment once the address is complete and a real
+  // shipping tier is chosen. Phase 2 → can pay once payment is also complete.
+  const canContinue = addressComplete && realShippingSelected && !quoting;
+  const canPay = addressLocked && realShippingSelected && paymentComplete && !paying;
 
   async function pay() {
     setPaying(true);
@@ -246,11 +250,37 @@ function PaymentArea({ orderNumber }: { orderNumber: number | null }) {
     }
   }
 
+  const shippingAddr = co.shippingAddress;
+
   return (
     <div className="space-y-6">
       <section className="rounded-2xl border border-border bg-card p-6">
-        <h2 className="mb-4 font-display text-lg font-semibold">Shipping address</h2>
-        <ShippingAddressElement options={{ display: { name: "full" } }} onChange={onAddressChange} />
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="font-display text-lg font-semibold">Shipping address</h2>
+          {addressLocked && (
+            <button
+              type="button"
+              onClick={() => setAddressLocked(false)}
+              className="text-sm font-medium text-primary hover:underline"
+            >
+              Edit
+            </button>
+          )}
+        </div>
+        {!addressLocked ? (
+          <ShippingAddressElement options={{ display: { name: "full" } }} onChange={onAddressChange} />
+        ) : (
+          <address className="text-sm not-italic leading-relaxed text-muted-foreground">
+            {shippingAddr?.name && (
+              <span className="block font-medium text-foreground">{shippingAddr.name}</span>
+            )}
+            {shippingAddr?.address.line1}
+            {shippingAddr?.address.line2 ? `, ${shippingAddr.address.line2}` : ""}
+            <br />
+            {shippingAddr?.address.city}, {shippingAddr?.address.state}{" "}
+            {shippingAddr?.address.postal_code}
+          </address>
+        )}
       </section>
 
       <section className="rounded-2xl border border-border bg-card p-6">
@@ -266,43 +296,67 @@ function PaymentArea({ orderNumber }: { orderNumber: number | null }) {
           {co.shippingOptions
             .filter((opt) => opt.displayName !== PLACEHOLDER_SHIPPING)
             .map((opt) => (
-            <label
-              key={opt.id}
-              className="flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-border p-3 text-sm has-[:checked]:border-primary"
-            >
-              <span className="flex items-center gap-2.5">
-                <input
-                  type="radio"
-                  name="shipping-tier"
-                  checked={selectedId === opt.id}
-                  onChange={() => co.updateShippingOption(opt.id)}
-                />
-                <span className="font-medium">{opt.displayName}</span>
-              </span>
-              <span className="font-medium">{opt.amount}</span>
-            </label>
-          ))}
+              <label
+                key={opt.id}
+                className="flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-border p-3 text-sm has-[:checked]:border-primary"
+              >
+                <span className="flex items-center gap-2.5">
+                  <input
+                    type="radio"
+                    name="shipping-tier"
+                    checked={selectedId === opt.id}
+                    onChange={() => co.updateShippingOption(opt.id)}
+                  />
+                  <span className="font-medium">{opt.displayName}</span>
+                </span>
+                <span className="font-medium">{opt.amount}</span>
+              </label>
+            ))}
         </div>
       </section>
 
-      <section className="rounded-2xl border border-border bg-card p-6">
-        <h2 className="mb-4 font-display text-lg font-semibold">Payment</h2>
-        <PaymentElement onChange={(e) => setPaymentComplete(e.complete)} />
-      </section>
-
-      <div className="rounded-2xl border border-border bg-card p-6">
-        <div className="mb-4 flex items-center justify-between text-base">
-          <span className="font-semibold">Total</span>
-          <span className="font-semibold">{totalLabel}</span>
+      {!addressLocked ? (
+        <div className="rounded-2xl border border-border bg-card p-6">
+          <div className="mb-4 flex items-center justify-between text-base">
+            <span className="font-semibold">Total</span>
+            <span className="font-semibold">{totalLabel}</span>
+          </div>
+          <Button
+            className="w-full"
+            size="lg"
+            onClick={() => setAddressLocked(true)}
+            disabled={!canContinue}
+          >
+            Continue to payment
+          </Button>
+          {!realShippingSelected && addressComplete && !quoting && (
+            <p className="mt-3 text-center text-xs text-muted-foreground">
+              Choose a shipping method to continue.
+            </p>
+          )}
         </div>
-        {payError && <p className="mb-3 text-sm text-destructive">{payError}</p>}
-        <Button className="w-full" size="lg" onClick={pay} disabled={!canPay}>
-          {paying ? "Processing…" : `Pay ${totalLabel}`.trim()}
-        </Button>
-        <p className="mt-3 text-center text-xs text-muted-foreground">
-          Secure checkout powered by Stripe.
-        </p>
-      </div>
+      ) : (
+        <>
+          <section className="rounded-2xl border border-border bg-card p-6">
+            <h2 className="mb-4 font-display text-lg font-semibold">Payment</h2>
+            <PaymentElement onChange={(e) => setPaymentComplete(e.complete)} />
+          </section>
+
+          <div className="rounded-2xl border border-border bg-card p-6">
+            <div className="mb-4 flex items-center justify-between text-base">
+              <span className="font-semibold">Total</span>
+              <span className="font-semibold">{totalLabel}</span>
+            </div>
+            {payError && <p className="mb-3 text-sm text-destructive">{payError}</p>}
+            <Button className="w-full" size="lg" onClick={pay} disabled={!canPay}>
+              {paying ? "Processing…" : `Pay ${totalLabel}`.trim()}
+            </Button>
+            <p className="mt-3 text-center text-xs text-muted-foreground">
+              Secure checkout powered by Stripe.
+            </p>
+          </div>
+        </>
+      )}
     </div>
   );
 }
