@@ -4,6 +4,7 @@ import { useRef, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { FormError } from "@/components/admin/ui";
 import { saveMarketingSettings } from "@/app/admin/(panel)/actions";
 import type { Discount, MarketingSettings } from "@/types/db";
 
@@ -95,7 +96,7 @@ export function SaturdayEmailCard({
         </div>
       </div>
 
-      {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
+      {error && <FormError className="mt-3">{error}</FormError>}
       {msg && <p className="mt-3 text-sm text-muted-foreground">{msg}</p>}
       <Button type="submit" className="mt-4" disabled={pending}>
         {pending ? "Saving…" : "Save offer"}

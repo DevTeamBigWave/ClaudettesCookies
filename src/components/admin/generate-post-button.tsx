@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { FormError } from "@/components/admin/ui";
 import { startBlogDrop, getLatestBlogJob } from "@/app/admin/(panel)/actions";
 import type { BlogGenerationJob } from "@/types/db";
 
@@ -84,7 +85,7 @@ export function GeneratePostButton({
         </p>
       )}
       {doneMsg && <p className="text-xs text-muted-foreground">{doneMsg}</p>}
-      {errMsg && <p className="text-xs text-destructive">{errMsg}</p>}
+      {errMsg && <FormError className="text-xs">{errMsg}</FormError>}
     </div>
   );
 }

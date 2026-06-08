@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { FormError } from "@/components/admin/ui";
 import { createCampaign } from "@/app/admin/(panel)/actions";
 
 export function CampaignForm({ subscriberCount }: { subscriberCount: number }) {
@@ -80,7 +81,7 @@ export function CampaignForm({ subscriberCount }: { subscriberCount: number }) {
           </div>
         </div>
       </div>
-      {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
+      {error && <FormError className="mt-3">{error}</FormError>}
       {msg && <p className="mt-3 text-sm text-primary">{msg}</p>}
       <Button type="submit" className="mt-4" disabled={pending}>
         {pending ? "Saving…" : "Save campaign"}

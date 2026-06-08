@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { FileDown, Loader2, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { FormError } from "@/components/admin/ui";
 
 /**
  * Admin control for generating / downloading a FedEx shipping label for an order.
@@ -62,8 +63,8 @@ export function LabelActions({
           Tracking: <span className="font-mono font-medium text-foreground">{trackingNumber}</span>
         </p>
       )}
-      {!canGenerate && reason && <p className="text-sm text-muted-foreground">{reason}</p>}
-      {error && <p className="text-sm text-destructive">{error}</p>}
+      {!canGenerate && reason && <FormError tone="muted">{reason}</FormError>}
+      {error && <FormError>{error}</FormError>}
     </div>
   );
 }

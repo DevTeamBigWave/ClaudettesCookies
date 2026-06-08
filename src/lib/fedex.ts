@@ -327,8 +327,19 @@ export async function createFedExLabel(opts: {
     body: JSON.stringify(body),
   });
   if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`FedEx label request failed (${res.status}): ${text.slice(0, 400)}`);
+    // FedEx returns a JSON error envelope ({ errors: [{ code, message }] }).
+    // Surface the human-readable message(s) instead of dumping raw JSON.
+    const raw = await res.text().catch(() => "");
+    let msg = raw.slice(0, 300);
+    try {
+      const j = JSON.parse(raw) as { errors?: Array<{ message?: string }> };
+      if (Array.isArray(j.errors) && j.errors.length) {
+        msg = j.errors.map((e) => e.message).filter(Boolean).join(" ") || msg;
+      }
+    } catch {
+      /* not JSON — keep the trimmed raw text */
+    }
+    throw new Error(`FedEx couldn't create the label (${res.status}): ${msg}`);
   }
 
   const json = (await res.json()) as {

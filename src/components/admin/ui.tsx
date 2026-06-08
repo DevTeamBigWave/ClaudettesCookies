@@ -92,3 +92,31 @@ export function StatusPill({ status }: { status: string }) {
     </span>
   );
 }
+
+/**
+ * Consistent inline error/notice box for admin forms and actions. Wraps long
+ * content (e.g. raw API errors) so it never overflows its card, and renders
+ * nothing when there's no message.
+ */
+export function FormError({
+  children,
+  tone = "error",
+  className,
+}: {
+  children?: React.ReactNode;
+  tone?: "error" | "muted";
+  className?: string;
+}) {
+  if (!children) return null;
+  return (
+    <p
+      className={cn(
+        "rounded-xl p-3 text-sm break-words [overflow-wrap:anywhere]",
+        tone === "error" ? "bg-destructive/10 text-destructive" : "bg-secondary text-muted-foreground",
+        className,
+      )}
+    >
+      {children}
+    </p>
+  );
+}

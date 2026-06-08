@@ -4,6 +4,7 @@ import { useRef, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { FormError } from "@/components/admin/ui";
 import { createDiscount, updateDiscount } from "@/app/admin/(panel)/actions";
 import type { Discount } from "@/types/db";
 
@@ -128,7 +129,7 @@ export function DiscountForm({
         </label>
       </div>
 
-      {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
+      {error && <FormError className="mt-3">{error}</FormError>}
       <div className="mt-4 flex gap-2">
         <Button type="submit" disabled={pending}>
           {pending ? "Saving…" : editing ? "Save changes" : "Create promotion"}
