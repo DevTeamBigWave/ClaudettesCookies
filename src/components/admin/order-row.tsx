@@ -12,9 +12,17 @@ export interface OrderRowData {
   fulfillment: string;
   shipping_method: string | null;
   tracking_number: string | null;
+  delivery_status: string | null;
   total_cents: number;
   created_at: string;
 }
+
+const DELIVERY_LABEL: Record<string, string> = {
+  delivered: "✅ Delivered",
+  in_transit: "🚚 In transit",
+  exception: "⚠️ Delivery issue",
+  unknown: "Status unknown",
+};
 
 /** A clickable orders-table row that navigates to the order detail page. */
 export function OrderRow({ order }: { order: OrderRowData }) {
@@ -42,6 +50,9 @@ export function OrderRow({ order }: { order: OrderRowData }) {
       <td className="px-4 py-3 text-muted-foreground">
         {order.shipping_method ?? "—"}
         {order.tracking_number && <span className="block text-xs">📦 {order.tracking_number}</span>}
+        {order.delivery_status && (
+          <span className="block text-xs">{DELIVERY_LABEL[order.delivery_status] ?? order.delivery_status}</span>
+        )}
       </td>
       <td className="px-4 py-3 font-medium">{formatMoney(order.total_cents)}</td>
       <td className="px-4 py-3 text-muted-foreground">{formatDate(order.created_at)}</td>

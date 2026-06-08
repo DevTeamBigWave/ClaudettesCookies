@@ -121,6 +121,28 @@ export function orderReceiptEmail(opts: {
   );
 }
 
+export function orderShippedEmail(opts: {
+  orderNumber: number;
+  carrier: string;
+  trackingNumber?: string | null;
+  trackingUrl?: string | null;
+  siteUrl: string;
+}) {
+  const track = opts.trackingNumber
+    ? `<p style="color:${COLORS.muted};margin:0 0 8px;">${opts.carrier} tracking: <strong style="color:${COLORS.ink};">${opts.trackingNumber}</strong></p>`
+    : "";
+  const cta = opts.trackingUrl
+    ? `<p style="margin:24px 0 0;">${btn(opts.trackingUrl, "Track your package")}</p>`
+    : `<p style="margin:24px 0 0;">${btn(`${opts.siteUrl}/shop`, "Order more")}</p>`;
+  return emailShell(
+    `<h1 style="font-family:${SERIF};color:${COLORS.ink};font-size:24px;margin:0 0 4px;">Your cookies are on the way 🍪</h1>
+     <p style="color:${COLORS.muted};margin:0 0 20px;">Order #${opts.orderNumber} just shipped${opts.carrier ? ` via ${opts.carrier}` : ""}.</p>
+     ${track}
+     ${cta}`,
+    `Order #${opts.orderNumber} shipped`,
+  );
+}
+
 export function giftCardEmail(opts: {
   code: string;
   amountCents: number;

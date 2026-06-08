@@ -6,7 +6,7 @@ export default async function OrdersPage() {
   const db = createAdminClient();
   const { data: orders } = await db
     .from("orders")
-    .select("id, order_number, email, status, fulfillment, shipping_method, tracking_number, total_cents, created_at")
+    .select("id, order_number, email, status, fulfillment, shipping_method, tracking_number, delivery_status, total_cents, created_at")
     .order("created_at", { ascending: false })
     .limit(100);
 

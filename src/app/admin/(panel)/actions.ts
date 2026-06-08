@@ -7,6 +7,11 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { sendCampaign } from "@/lib/campaigns";
 import { startBackgroundDrop } from "@/lib/blog-generator";
 import { slugify } from "@/lib/utils";
+import { env } from "@/lib/env";
+import { sendEmail } from "@/lib/resend";
+import { orderShippedEmail } from "@/lib/emails";
+import { trackShipment } from "@/lib/fedex";
+import { trackingUrl } from "@/lib/tracking";
 import type { DiscountType, BlogGenerationJob } from "@/types/db";
 
 // ── Products ────────────────────────────────────────────────────────────────
@@ -229,4 +234,98 @@ export async function getLatestBlogJob() {
     .limit(1)
     .maybeSingle();
   return (data as BlogGenerationJob) ?? null;
+}
+
+// ── Fulfillment ───────────────────────────────────────────────────────────────
+const ShipInput = z.object({
+  orderId: z.string().uuid(),
+  trackingNumber: z.string().trim().max(60).optional(),
+  carrier: z.string().trim().max(40).default("FedEx"),
+});
+
+/**
+ * Shopify-style "Mark as shipped": flips the order to fulfilled, records the
+ * carrier + tracking + ship time, and emails the customer their tracking link.
+ * Tracking is optional (you can fulfill without it).
+ */
+export async function markOrderShipped(formData: FormData) {
+  await requireAdmin();
+  const parsed = ShipInput.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return;
+  const { orderId, trackingNumber, carrier } = parsed.data;
+  const db = createAdminClient();
+  const tracking = trackingNumber || null;
+
+  await db
+    .from("orders")
+    .update({
+      fulfillment: "fulfilled",
+      shipped_at: new Date().toISOString(),
+      tracking_number: tracking,
+      shipping_carrier: carrier,
+      delivery_status: tracking ? "in_transit" : null,
+      delivered_at: null,
+    })
+    .eq("id", orderId);
+
+  const { data: order } = await db
+    .from("orders")
+    .select("order_number, email")
+    .eq("id", orderId)
+    .single();
+  if (order) {
+    const url = tracking ? trackingUrl(carrier, tracking) : null;
+    await sendEmail({
+      to: order.email,
+      subject: `Your Claudette's order #${order.order_number} has shipped 🍪`,
+      html: orderShippedEmail({
+        orderNumber: order.order_number,
+        carrier,
+        trackingNumber: tracking,
+        trackingUrl: url,
+        siteUrl: env.NEXT_PUBLIC_SITE_URL,
+      }),
+    }).catch((e) => console.error("Shipped email failed:", e));
+  }
+
+  revalidatePath(`/admin/orders/${orderId}`);
+  revalidatePath("/admin/orders");
+}
+
+/** Undo fulfillment (e.g. shipped by mistake). Clears ship + delivery state. */
+export async function markOrderUnfulfilled(orderId: string) {
+  await requireAdmin();
+  const db = createAdminClient();
+  await db
+    .from("orders")
+    .update({ fulfillment: "unfulfilled", shipped_at: null, delivery_status: null, delivered_at: null })
+    .eq("id", orderId);
+  revalidatePath(`/admin/orders/${orderId}`);
+  revalidatePath("/admin/orders");
+}
+
+/** Poll FedEx for the live delivery status of an order's tracking number. */
+export async function refreshDeliveryStatus(
+  orderId: string,
+): Promise<{ status: string; text: string } | { error: string }> {
+  await requireAdmin();
+  const db = createAdminClient();
+  const { data: order } = await db
+    .from("orders")
+    .select("tracking_number")
+    .eq("id", orderId)
+    .single();
+  if (!order?.tracking_number) return { error: "No tracking number on this order." };
+
+  try {
+    const result = await trackShipment(order.tracking_number);
+    await db
+      .from("orders")
+      .update({ delivery_status: result.status, delivered_at: result.deliveredAt })
+      .eq("id", orderId);
+    revalidatePath(`/admin/orders/${orderId}`);
+    return { status: result.status, text: result.statusText };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Could not fetch tracking." };
+  }
 }

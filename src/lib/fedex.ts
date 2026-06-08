@@ -228,6 +228,74 @@ export async function getFedExRates(opts: {
   return options.sort((a, b) => a.amountCents - b.amountCents);
 }
 
+export type DeliveryStatus = "in_transit" | "delivered" | "exception" | "unknown";
+
+export interface TrackResult {
+  status: DeliveryStatus;
+  /** Human-readable status from FedEx, e.g. "Delivered", "On FedEx vehicle for delivery". */
+  statusText: string;
+  /** ISO timestamp of actual delivery, when delivered. */
+  deliveredAt: string | null;
+}
+
+/**
+ * Look up live delivery status for a tracking number via the FedEx Track API.
+ * Unlike Ship, this neither bills nor creates anything — it just reads status —
+ * so it's safe to poll. Throws on transport/credential errors.
+ */
+export async function trackShipment(trackingNumber: string): Promise<TrackResult> {
+  if (!isFedExConfigured()) throw new Error("FedEx isn't configured for tracking.");
+  const accessToken = await getAccessToken();
+  const res = await fetch(`${BASE}/track/v1/trackingnumbers`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+      "X-locale": "en_US",
+    },
+    body: JSON.stringify({
+      includeDetailedScans: false,
+      trackingInfo: [{ trackingNumberInfo: { trackingNumber } }],
+    }),
+  });
+  if (!res.ok) {
+    const raw = await res.text().catch(() => "");
+    let msg = raw.slice(0, 300);
+    try {
+      const j = JSON.parse(raw) as { errors?: Array<{ message?: string }> };
+      if (Array.isArray(j.errors) && j.errors.length) {
+        msg = j.errors.map((e) => e.message).filter(Boolean).join(" ") || msg;
+      }
+    } catch {
+      /* keep raw */
+    }
+    throw new Error(`FedEx couldn't fetch tracking (${res.status}): ${msg}`);
+  }
+
+  const json = (await res.json()) as {
+    output?: {
+      completeTrackResults?: Array<{
+        trackResults?: Array<{
+          latestStatusDetail?: { code?: string; derivedCode?: string; statusByLocale?: string; description?: string };
+          dateAndTimes?: Array<{ type?: string; dateTime?: string }>;
+        }>;
+      }>;
+    };
+  };
+
+  const tr = json.output?.completeTrackResults?.[0]?.trackResults?.[0];
+  const code = (tr?.latestStatusDetail?.derivedCode || tr?.latestStatusDetail?.code || "").toUpperCase();
+  const statusText = tr?.latestStatusDetail?.statusByLocale || tr?.latestStatusDetail?.description || "Unknown";
+  const deliveredAt = tr?.dateAndTimes?.find((d) => d.type === "ACTUAL_DELIVERY")?.dateTime ?? null;
+
+  let status: DeliveryStatus = "in_transit";
+  if (code === "DL") status = "delivered";
+  else if (["DE", "SE", "CA", "RS", "RD"].includes(code)) status = "exception"; // delivery/shipment exception, cancelled, returned
+  else if (!code) status = "unknown";
+
+  return { status, statusText, deliveredAt: status === "delivered" ? deliveredAt : null };
+}
+
 /** Destination contact + address for a shipment, as we store it on the order. */
 export interface LabelRecipient {
   name: string;

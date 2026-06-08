@@ -6,6 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { isFedExShipConfigured } from "@/lib/fedex";
 import { PageHeader, StatusPill } from "@/components/admin/ui";
 import { LabelActions } from "@/components/admin/label-actions";
+import { FulfillmentActions } from "@/components/admin/fulfillment-actions";
 import { formatMoney, formatDate } from "@/lib/utils";
 
 type StripeAddress = {
@@ -119,6 +120,22 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
             ) : (
               <p className="text-sm text-muted-foreground">No shipping address recorded.</p>
             )}
+          </div>
+
+          <div className="rounded-2xl border border-border bg-card p-6">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="font-display text-lg font-semibold">Fulfillment</h2>
+              <StatusPill status={order.fulfillment} />
+            </div>
+            <FulfillmentActions
+              orderId={order.id}
+              fulfillment={order.fulfillment}
+              trackingNumber={order.tracking_number}
+              carrier={order.shipping_carrier}
+              shippedAt={order.shipped_at}
+              deliveryStatus={order.delivery_status}
+              deliveredAt={order.delivered_at}
+            />
           </div>
 
           <div className="rounded-2xl border border-border bg-card p-6">

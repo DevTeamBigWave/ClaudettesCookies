@@ -82,6 +82,9 @@ export interface Order {
   tracking_number: string | null;
   label_path: string | null;
   label_generated_at: string | null;
+  shipped_at: string | null;
+  delivery_status: string | null;
+  delivered_at: string | null;
   stripe_session_id: string | null;
   stripe_payment_intent_id: string | null;
   notes: string | null;
