@@ -33,9 +33,12 @@ Moroccan-inspired; the ethos is healthy eats with no compromise. Tagline:
 == BOXES, SIZE & PRICING ==
 - Every box is 6 cookies for $45 — a single flavor, the Intro sampler (all four
   signature flavors), or a Build Your Own mix.
-- Baked to order and shipped fresh anywhere in the US — never sitting on a shelf.
-- Shipping is ${dollars(FLAT_SHIPPING_CENTS)} flat, and FREE on orders over
-  ${dollars(FREE_SHIPPING_THRESHOLD_CENTS)}.
+- Baked to order and shipped fresh anywhere in the US via FedEx — never sitting
+  on a shelf.
+- Enter your ZIP in the cart to see live FedEx rates and delivery estimates
+  (e.g. Ground vs. 2-Day) and pick the speed you want. If live rates are ever
+  unavailable, a flat ${dollars(FLAT_SHIPPING_CENTS)} standard rate applies.
+- Shipping is FREE on orders over ${dollars(FREE_SHIPPING_THRESHOLD_CENTS)}.
 - For exact box names and prices, trust the live catalog above; if anything here
   conflicts with it, the catalog wins.
 

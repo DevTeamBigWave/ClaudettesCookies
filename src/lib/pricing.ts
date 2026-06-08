@@ -52,10 +52,17 @@ export function isDiscountValid(discount: Discount, subtotalCents: number, now =
 
 /**
  * The single source of pricing truth. Builds the full priced cart from
- * server-trusted line prices. Tax is left at 0 for the MVP (Stripe Tax can be
- * switched on later without touching callers).
+ * server-trusted line prices. `shippingQuoteCents` is the rate the customer
+ * selected (e.g. a live FedEx service), already re-validated server-side; when
+ * omitted we fall back to the flat rate. Free-shipping perks (order over the
+ * threshold, or a free_shipping discount) still zero it out either way. Tax is
+ * left at 0 for the MVP (Stripe Tax can be switched on later).
  */
-export function priceCart(lines: PricedLine[], discount: Discount | null): PricedCart {
+export function priceCart(
+  lines: PricedLine[],
+  discount: Discount | null,
+  shippingQuoteCents?: number,
+): PricedCart {
   const subtotalCents = lines.reduce((s, l) => s + l.totalCents, 0);
   const discountCents = discountAmountCents(discount, subtotalCents);
   const afterDiscount = subtotalCents - discountCents;
@@ -63,7 +70,8 @@ export function priceCart(lines: PricedLine[], discount: Discount | null): Price
   const freeShipping =
     afterDiscount >= FREE_SHIPPING_THRESHOLD_CENTS ||
     (discount?.type === "free_shipping" && subtotalCents >= discount.min_subtotal_cents);
-  const shippingCents = lines.length === 0 || freeShipping ? 0 : FLAT_SHIPPING_CENTS;
+  const baseShippingCents = shippingQuoteCents ?? FLAT_SHIPPING_CENTS;
+  const shippingCents = lines.length === 0 || freeShipping ? 0 : baseShippingCents;
 
   const taxCents = 0;
   const totalCents = afterDiscount + shippingCents + taxCents;

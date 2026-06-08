@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { stripe } from "@/lib/stripe";
 import { env } from "@/lib/env";
 import { isDiscountValid, priceCart, type PricedLine } from "@/lib/pricing";
+import { resolveSelectedShipping } from "@/lib/shipping";
 import { BUILD_YOUR_OWN_HANDLE, BOX_SIZE } from "@/lib/data/products";
 import type { Discount } from "@/types/db";
 
@@ -13,6 +14,11 @@ export const runtime = "nodejs";
 const Body = z.object({
   email: z.string().email(),
   discountCode: z.string().trim().min(1).max(40).optional(),
+  // Destination ZIP + the FedEx service the customer picked on the cart. Both
+  // optional: without them we fall back to flat-rate shipping. The amount is
+  // always re-derived server-side, never trusted from the client.
+  destZip: z.string().trim().regex(/^\d{5}(-\d{4})?$/).optional(),
+  shippingServiceType: z.string().trim().max(40).optional(),
   items: z
     .array(
       z.object({
@@ -32,7 +38,7 @@ export async function POST(req: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
-  const { email, items, discountCode } = parsed.data;
+  const { email, items, discountCode, destZip, shippingServiceType } = parsed.data;
   const db = createAdminClient();
 
   // 1) Load variants from the DB and re-price every line server-side.
@@ -141,7 +147,15 @@ export async function POST(req: Request) {
     }
   }
 
-  const cart = priceCart(priced, discount);
+  // Re-derive the chosen shipping rate server-side (live FedEx or flat), so the
+  // amount billed matches what we quoted and can't be tampered with.
+  const shipping = await resolveSelectedShipping({
+    db,
+    destZip,
+    items: priced.map((l) => ({ variantId: l.variantId, quantity: l.quantity })),
+    serviceType: shippingServiceType,
+  });
+  const cart = priceCart(priced, discount, shipping.amountCents);
 
   // 3) Upsert the customer (guest checkout friendly).
   const { data: customer } = await db
@@ -198,21 +212,33 @@ export async function POST(req: Request) {
       product_data: { name: `${l.title} — ${l.variantTitle}` },
     },
   }));
-  if (cart.shippingCents > 0) {
-    lineItems.push({
-      quantity: 1,
-      price_data: {
-        currency: "usd",
-        unit_amount: cart.shippingCents,
-        product_data: { name: "Shipping" },
-      },
-    });
-  }
+
+  // Shipping rides as a Stripe shipping_option (not a line item) so it shows as
+  // a labeled method and is excluded from any % discount. Free orders still get
+  // a $0 option labeled "Free shipping".
+  const shippingName = cart.shippingCents === 0 ? "Free shipping" : shipping.label;
+  const shippingRate: Stripe.Checkout.SessionCreateParams.ShippingOption = {
+    shipping_rate_data: {
+      type: "fixed_amount",
+      fixed_amount: { amount: cart.shippingCents, currency: "usd" },
+      display_name: shippingName,
+      ...(shipping.transitDays
+        ? {
+            delivery_estimate: {
+              minimum: { unit: "business_day", value: shipping.transitDays },
+              maximum: { unit: "business_day", value: shipping.transitDays },
+            },
+          }
+        : {}),
+    },
+  };
 
   const session = await stripe.checkout.sessions.create({
     mode: "payment",
     customer_email: email,
     line_items: lineItems,
+    shipping_address_collection: { allowed_countries: ["US"] },
+    shipping_options: [shippingRate],
     // Apply discount as a Stripe coupon so the displayed total matches our math.
     discounts: cart.discountCents > 0 ? [{ coupon: await ensureCoupon(cart.discountCents) }] : undefined,
     success_url: `${env.NEXT_PUBLIC_SITE_URL}/checkout/success?order=${order.order_number}`,
