@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import {
   CheckoutElementsProvider,
@@ -27,6 +27,13 @@ export default function CheckoutPage() {
   const [orderNumber, setOrderNumber] = useState<number | null>(null);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // The cart hydrates from localStorage, which only exists in the browser.
+  // Render nothing until mounted so the server HTML and the first client render
+  // match — otherwise the empty-vs-populated cart causes a hydration mismatch
+  // that can hard-crash the page on a direct load/refresh of /checkout.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   async function startCheckout() {
     setError(null);
@@ -58,6 +65,10 @@ export default function CheckoutPage() {
     } finally {
       setCreating(false);
     }
+  }
+
+  if (!mounted) {
+    return <div className="container max-w-2xl py-14" />;
   }
 
   if (lines.length === 0 && !clientSecret) {
@@ -172,11 +183,12 @@ function PaymentArea({ orderNumber }: { orderNumber: number | null }) {
   }
 
   const co = result.checkout;
-  const selectedId = co.shipping?.shippingOption.id ?? null;
+  const totalLabel = co.total?.total?.amount ?? "";
+  const selectedId = co.shipping?.shippingOption?.id ?? null;
   // Don't allow paying on the $0 "Enter address" placeholder — require a real
   // tier (Regular/Express/Free shipping) selected after the address resolves.
   const selectedIsReal =
-    !!co.shipping && co.shipping.shippingOption.displayName !== PLACEHOLDER_SHIPPING;
+    !!co.shipping && co.shipping.shippingOption?.displayName !== PLACEHOLDER_SHIPPING;
   const canPay = co.shippingOptions.length > 0 && selectedId !== null && selectedIsReal && !paying;
 
   async function pay() {
@@ -239,11 +251,11 @@ function PaymentArea({ orderNumber }: { orderNumber: number | null }) {
       <div className="rounded-2xl border border-border bg-card p-6">
         <div className="mb-4 flex items-center justify-between text-base">
           <span className="font-semibold">Total</span>
-          <span className="font-semibold">{co.total.total.amount}</span>
+          <span className="font-semibold">{totalLabel}</span>
         </div>
         {payError && <p className="mb-3 text-sm text-destructive">{payError}</p>}
         <Button className="w-full" size="lg" onClick={pay} disabled={!canPay}>
-          {paying ? "Processing…" : `Pay ${co.total.total.amount}`}
+          {paying ? "Processing…" : `Pay ${totalLabel}`.trim()}
         </Button>
         <p className="mt-3 text-center text-xs text-muted-foreground">
           Secure checkout powered by Stripe.
