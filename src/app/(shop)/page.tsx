@@ -37,7 +37,7 @@ export default async function HomePage() {
               cookies were made before the industrial revolution. Moroccan-inspired flavors,
               shipped to your door.
             </p>
-            <div className="mt-8 flex flex-wrap gap-3">
+            <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:flex-wrap">
               <Button asChild size="lg">
                 <Link href="/shop">Shop the cleanest cookie</Link>
               </Button>

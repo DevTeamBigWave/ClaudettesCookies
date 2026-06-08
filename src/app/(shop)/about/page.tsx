@@ -126,7 +126,7 @@ export default function AboutPage() {
         .
       </p>
 
-      <div className="mt-10 flex flex-wrap gap-3">
+      <div className="mt-10 flex flex-col gap-4 sm:flex-row sm:flex-wrap">
         <Button asChild size="lg">
           <Link href="/shop">Shop the cleanest cookie</Link>
         </Button>

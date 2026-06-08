@@ -28,9 +28,9 @@ function wrapBody(campaign: EmailCampaign, sub: EmailSubscriber): string {
   return `${campaign.preheader ? `<div style="display:none">${campaign.preheader}</div>` : ""}
     ${html}
     <hr style="margin-top:32px;border:none;border-top:1px solid #e7dcc8"/>
-    <p style="font-size:12px;color:#8a7c68">
+    <p style="font-size:12px;color:#8a7257">
       You're receiving this because you signed up at Claudette's Cookies.
-      <a href="${unsubUrl}" style="color:#8a7c68">Unsubscribe</a>.
+      <a href="${unsubUrl}" style="color:#8a7257">Unsubscribe</a>.
     </p>`;
 }
 

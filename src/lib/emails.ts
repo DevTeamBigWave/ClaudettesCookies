@@ -1,32 +1,56 @@
 import { formatMoney } from "@/lib/utils";
 
+/**
+ * Brand palette + type for all transactional emails. Mirrors the storefront's
+ * official 2024 brand tokens (see src/app/globals.css). Inlined as hex because
+ * email clients don't support CSS variables.
+ *
+ * Fonts: the brand faces (GT Alpina display serif, Mabry body sans) can't be
+ * embedded reliably across mail clients, so they're listed first and fall back
+ * to the correct web-safe equivalents — Georgia for the display serif, the
+ * system sans stack for body.
+ */
+const COLORS = {
+  sand: "#f7f0e3", // background — cream/sand (brand Cream)
+  card: "#ffffff",
+  ink: "#4f250c", // Brown — body copy + headlines
+  muted: "#8a7257", // warm brown subtext
+  border: "#e7dcc8", // card edge
+  divider: "#efe6d6", // hairline rules
+  paprika: "#fc480f", // Paprika — primary CTAs (matches the storefront)
+  onPaprika: "#fbf7f1", // cream text on paprika
+} as const;
+
+const SERIF = "'GT Alpina', Georgia, 'Times New Roman', serif";
+const SANS = "'Mabry', -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
+
 /** Shared email chrome — inline styles for broad client support. */
 function layout(body: string, preheader = "") {
   return `<!doctype html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"></head>
-<body style="margin:0;background:#f7f0e3;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#2c2118;">
+<body style="margin:0;background:${COLORS.sand};font-family:${SANS};color:${COLORS.ink};">
 ${preheader ? `<div style="display:none;max-height:0;overflow:hidden;opacity:0">${preheader}</div>` : ""}
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:32px 16px;">
-<table role="presentation" width="100%" style="max-width:560px;background:#ffffff;border-radius:18px;overflow:hidden;border:1px solid #e7dcc8;">
-<tr><td style="padding:28px 32px;border-bottom:1px solid #efe6d6;">
-<span style="font-size:22px;font-weight:700;font-family:Georgia,serif;">Claudette&rsquo;s Cookies</span>
+<table role="presentation" width="100%" style="max-width:560px;background:${COLORS.card};border-radius:18px;overflow:hidden;border:1px solid ${COLORS.border};">
+<tr><td style="padding:28px 32px;border-bottom:1px solid ${COLORS.divider};">
+<span style="font-size:22px;font-weight:700;font-family:${SERIF};color:${COLORS.ink};">Claudette&rsquo;s Cookies</span>
 </td></tr>
 <tr><td style="padding:32px;font-size:15px;line-height:1.6;">${body}</td></tr>
-<tr><td style="padding:20px 32px;border-top:1px solid #efe6d6;font-size:12px;color:#8a7c68;">
+<tr><td style="padding:20px 32px;border-top:1px solid ${COLORS.divider};font-size:12px;color:${COLORS.muted};">
 Four flavors. Zero compromise. · Baked fresh in NYC
 </td></tr>
 </table></td></tr></table></body></html>`;
 }
 
 const btn = (href: string, label: string) =>
-  `<a href="${href}" style="display:inline-block;background:#b02a44;color:#fff;text-decoration:none;font-weight:600;padding:12px 24px;border-radius:999px;">${label}</a>`;
+  `<a href="${href}" style="display:inline-block;background:${COLORS.paprika};color:${COLORS.onPaprika};text-decoration:none;font-weight:600;padding:12px 24px;border-radius:999px;">${label}</a>`;
 
 export function welcomeEmail(siteUrl: string) {
   return layout(
-    `<h1 style="font-family:Georgia,serif;font-size:24px;margin:0 0 12px;">Welcome to the family 🍪</h1>
+    `<h1 style="font-family:${SERIF};color:${COLORS.ink};font-size:24px;margin:0 0 12px;">Welcome to the family 🍪</h1>
      <p>You&rsquo;re on the list. Here&rsquo;s <strong>10% off</strong> your first box with code <strong>WELCOME10</strong>.</p>
      <p style="margin:24px 0;">${btn(`${siteUrl}/shop`, "Shop the boxes")}</p>
-     <p style="color:#8a7c68;">Four flavors, zero compromise — see what the feed&rsquo;s been talking about.</p>`,
+     <p style="color:${COLORS.muted};">Four flavors, zero compromise — see what the feed&rsquo;s been talking about.</p>`,
     "Welcome — here's 10% off your first box.",
   );
 }
@@ -48,13 +72,13 @@ export function orderReceiptEmail(opts: {
     )
     .join("");
   const line = (l: string, v: number, bold = false) =>
-    `<tr><td style="padding:4px 0;${bold ? "font-weight:700;" : "color:#8a7c68;"}">${l}</td>
+    `<tr><td style="padding:4px 0;${bold ? "font-weight:700;" : `color:${COLORS.muted};`}">${l}</td>
      <td align="right" style="padding:4px 0;${bold ? "font-weight:700;" : ""}">${formatMoney(v)}</td></tr>`;
 
   return layout(
-    `<h1 style="font-family:Georgia,serif;font-size:24px;margin:0 0 4px;">Order #${opts.orderNumber} confirmed</h1>
-     <p style="color:#8a7c68;margin:0 0 20px;">The oven&rsquo;s on. We&rsquo;ll email tracking when it ships.</p>
-     <table role="presentation" width="100%" style="font-size:14px;border-top:1px solid #efe6d6;border-bottom:1px solid #efe6d6;padding:8px 0;">
+    `<h1 style="font-family:${SERIF};color:${COLORS.ink};font-size:24px;margin:0 0 4px;">Order #${opts.orderNumber} confirmed</h1>
+     <p style="color:${COLORS.muted};margin:0 0 20px;">The oven&rsquo;s on. We&rsquo;ll email tracking when it ships.</p>
+     <table role="presentation" width="100%" style="font-size:14px;border-top:1px solid ${COLORS.divider};border-bottom:1px solid ${COLORS.divider};padding:8px 0;">
        ${rows}
      </table>
      <table role="presentation" width="100%" style="font-size:14px;margin-top:12px;">
@@ -76,10 +100,10 @@ export function giftCardEmail(opts: {
   siteUrl: string;
 }) {
   return layout(
-    `<h1 style="font-family:Georgia,serif;font-size:24px;margin:0 0 12px;">You&rsquo;ve got cookies, ${opts.recipientName}! 🎁</h1>
+    `<h1 style="font-family:${SERIF};color:${COLORS.ink};font-size:24px;margin:0 0 12px;">You&rsquo;ve got cookies, ${opts.recipientName}! 🎁</h1>
      <p>Someone sent you a <strong>${formatMoney(opts.amountCents)}</strong> Claudette&rsquo;s gift card.</p>
-     ${opts.senderMessage ? `<p style="background:#f7f0e3;border-radius:12px;padding:16px;font-style:italic;">&ldquo;${opts.senderMessage}&rdquo;</p>` : ""}
-     <p style="font-size:13px;color:#8a7c68;margin-top:16px;">Your code</p>
+     ${opts.senderMessage ? `<p style="background:${COLORS.sand};border-radius:12px;padding:16px;font-style:italic;">&ldquo;${opts.senderMessage}&rdquo;</p>` : ""}
+     <p style="font-size:13px;color:${COLORS.muted};margin-top:16px;">Your code</p>
      <p style="font-size:22px;font-weight:700;letter-spacing:2px;font-family:monospace;">${opts.code}</p>
      <p style="margin:24px 0;">${btn(`${opts.siteUrl}/shop`, "Redeem it")}</p>`,
     `You've got a Claudette's gift card 🎁`,
@@ -88,7 +112,7 @@ export function giftCardEmail(opts: {
 
 export function abandonedCartEmail(opts: { siteUrl: string; itemTitles: string[] }) {
   return layout(
-    `<h1 style="font-family:Georgia,serif;font-size:24px;margin:0 0 12px;">You left these behind 🍪</h1>
+    `<h1 style="font-family:${SERIF};color:${COLORS.ink};font-size:24px;margin:0 0 12px;">You left these behind 🍪</h1>
      <p>Your bag is still warm: <strong>${opts.itemTitles.join(", ")}</strong>.</p>
      <p>Here&rsquo;s <strong>10% off</strong> to finish up — code <strong>WELCOME10</strong>.</p>
      <p style="margin:24px 0;">${btn(`${opts.siteUrl}/cart`, "Complete my order")}</p>`,
