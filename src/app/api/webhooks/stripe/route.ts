@@ -6,7 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { sendEmail } from "@/lib/resend";
 import { orderReceiptEmail, giftCardEmail, newOrderEmail } from "@/lib/emails";
 import { createCalendarEvent, deleteCalendarEvent, bakeDayYmd } from "@/lib/google-calendar";
-import { formatMoney } from "@/lib/utils";
+import { formatMoney, boxContentsLines } from "@/lib/utils";
 
 export const runtime = "nodejs";
 // Stripe needs the raw body to verify the signature — disable body parsing.
@@ -118,6 +118,7 @@ async function fulfillOrder(
         orderNumber: order.order_number,
         items: (items ?? []).map((i) => ({
           title: i.title,
+          variantTitle: i.variant_title,
           quantity: i.quantity,
           totalCents: i.total_cents,
         })),
@@ -165,7 +166,10 @@ async function fulfillOrder(
       const itemLines = (items ?? [])
         .map((i) => {
           const head = `${i.quantity}× ${i.title}`;
-          return i.variant_title ? `${head}\n   • ${i.variant_title}` : head;
+          const contents = boxContentsLines(i.variant_title)
+            .map((l) => `   • ${l}`)
+            .join("\n");
+          return contents ? `${head}\n${contents}` : head;
         })
         .join("\n");
       const eventId = await createCalendarEvent({

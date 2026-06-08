@@ -1,4 +1,4 @@
-import { formatMoney } from "@/lib/utils";
+import { formatMoney, boxContentsLines } from "@/lib/utils";
 
 /**
  * Brand palette + type for all transactional emails. Mirrors the storefront's
@@ -86,7 +86,7 @@ export function welcomeEmail(siteUrl: string) {
 
 export function orderReceiptEmail(opts: {
   orderNumber: number;
-  items: { title: string; quantity: number; totalCents: number }[];
+  items: { title: string; variantTitle?: string | null; quantity: number; totalCents: number }[];
   subtotalCents: number;
   discountCents: number;
   shippingCents: number;
@@ -94,11 +94,13 @@ export function orderReceiptEmail(opts: {
   siteUrl: string;
 }) {
   const rows = opts.items
-    .map(
-      (i) =>
-        `<tr><td style="padding:6px 0;">${i.quantity}× ${i.title}</td>
-         <td align="right" style="padding:6px 0;">${formatMoney(i.totalCents)}</td></tr>`,
-    )
+    .map((i) => {
+      const contents = boxContentsLines(i.variantTitle)
+        .map((l) => `<div style="color:${COLORS.muted};font-size:12px;">${l}</div>`)
+        .join("");
+      return `<tr><td style="padding:6px 0;">${i.quantity}× ${i.title}${contents}</td>
+         <td align="right" style="padding:6px 0;vertical-align:top;">${formatMoney(i.totalCents)}</td></tr>`;
+    })
     .join("");
   const line = (l: string, v: number, bold = false) =>
     `<tr><td style="padding:4px 0;${bold ? "font-weight:700;" : `color:${COLORS.muted};`}">${l}</td>
@@ -148,15 +150,13 @@ export function newOrderEmail(opts: {
   siteUrl: string;
 }) {
   const rows = opts.items
-    .map(
-      (i) =>
-        `<tr><td style="padding:6px 0;">${i.quantity}× ${i.title}${
-          i.variantTitle
-            ? `<br><span style="color:${COLORS.muted};font-size:12px;">${i.variantTitle}</span>`
-            : ""
-        }</td>
-         <td align="right" style="padding:6px 0;vertical-align:top;">${formatMoney(i.totalCents)}</td></tr>`,
-    )
+    .map((i) => {
+      const contents = boxContentsLines(i.variantTitle)
+        .map((l) => `<div style="color:${COLORS.muted};font-size:12px;">${l}</div>`)
+        .join("");
+      return `<tr><td style="padding:6px 0;">${i.quantity}× ${i.title}${contents}</td>
+         <td align="right" style="padding:6px 0;vertical-align:top;">${formatMoney(i.totalCents)}</td></tr>`;
+    })
     .join("");
   const line = (l: string, v: number, bold = false) =>
     `<tr><td style="padding:4px 0;${bold ? "font-weight:700;" : `color:${COLORS.muted};`}">${l}</td>

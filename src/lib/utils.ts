@@ -13,6 +13,20 @@ export function formatMoney(cents: number, currency = "USD") {
   }).format(cents / 100);
 }
 
+/**
+ * Split a line item's variant title into its individual picks. Build-Your-Own
+ * boxes store their composition as a comma-joined string ("2× A, 1× B, …"); this
+ * returns one entry per cookie so it can render as a tidy list instead of one
+ * long wrapping line. Returns [] when there's nothing to split.
+ */
+export function boxContentsLines(variantTitle?: string | null): string[] {
+  if (!variantTitle) return [];
+  return variantTitle
+    .split(/,\s*/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
 export function formatDate(input: string | Date) {
   const d = typeof input === "string" ? new Date(input) : input;
   return new Intl.DateTimeFormat("en-US", {

@@ -7,7 +7,7 @@ import { isFedExShipConfigured } from "@/lib/fedex";
 import { PageHeader, StatusPill } from "@/components/admin/ui";
 import { LabelActions } from "@/components/admin/label-actions";
 import { FulfillmentActions } from "@/components/admin/fulfillment-actions";
-import { formatMoney, formatDate } from "@/lib/utils";
+import { formatMoney, formatDate, boxContentsLines } from "@/lib/utils";
 
 type StripeAddress = {
   line1?: string | null;
@@ -79,7 +79,13 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
                 <li key={i} className="flex items-center justify-between gap-4 py-3 text-sm">
                   <div>
                     <p className="font-medium">{it.title}</p>
-                    {it.variant_title && <p className="text-muted-foreground">{it.variant_title}</p>}
+                    {boxContentsLines(it.variant_title).length > 0 && (
+                      <ul className="mt-1 space-y-0.5 text-muted-foreground">
+                        {boxContentsLines(it.variant_title).map((line, j) => (
+                          <li key={j}>{line}</li>
+                        ))}
+                      </ul>
+                    )}
                   </div>
                   <div className="shrink-0 text-right">
                     <p className="text-muted-foreground">× {it.quantity}</p>

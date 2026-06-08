@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { requireAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { formatMoney, formatDate } from "@/lib/utils";
+import { formatMoney, formatDate, boxContentsLines } from "@/lib/utils";
 import { AutoPrint, PrintButton } from "@/components/admin/auto-print";
 
 export const dynamic = "force-dynamic";
@@ -110,7 +110,17 @@ export default async function PackingSlipPage({ params }: { params: Promise<{ id
             <tr key={i} className="border-b border-black/30 align-top">
               <td className="py-3 pr-4 font-bold">{it.quantity}×</td>
               <td className="py-3 pr-4 font-semibold">{it.title}</td>
-              <td className="py-3">{it.variant_title || "—"}</td>
+              <td className="py-3">
+                {boxContentsLines(it.variant_title).length > 0 ? (
+                  <ul className="space-y-0.5">
+                    {boxContentsLines(it.variant_title).map((line, j) => (
+                      <li key={j}>{line}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  "—"
+                )}
+              </td>
             </tr>
           ))}
         </tbody>
