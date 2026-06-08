@@ -92,9 +92,15 @@ function load() {
   const schema = isServer ? serverSchema : clientSchema;
   const parsed = schema.safeParse(process.env);
   if (!parsed.success) {
-    if (isBuildPhase) {
-      // Don't crash the build — runtime access will re-validate and fail loudly
-      // with the same message if a variable is still missing when served.
+    if (isBuildPhase || !isServer) {
+      // Don't crash the build, and never hard-crash the browser: throwing here
+      // would white-screen any page whose client bundle imports env over a
+      // single missing NEXT_PUBLIC_* var. Log and return what we have — the
+      // feature that needs the value handles its own absence. The server still
+      // fails fast below.
+      if (!isServer) {
+        console.error("⚠️ Missing public environment variables:", parsed.error.flatten().fieldErrors);
+      }
       return process.env as unknown as z.infer<typeof serverSchema>;
     }
     console.error("❌ Invalid environment variables:", parsed.error.flatten().fieldErrors);

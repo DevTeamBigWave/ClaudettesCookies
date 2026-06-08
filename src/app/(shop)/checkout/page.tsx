@@ -12,7 +12,7 @@ import type { StripeAddressElementChangeEvent } from "@stripe/stripe-js";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useCart } from "@/store/cart";
-import { getStripe } from "@/lib/stripe-client";
+import { getStripe, STRIPE_PUBLISHABLE_KEY } from "@/lib/stripe-client";
 import { formatMoney } from "@/lib/utils";
 
 // Mirrors the placeholder display_name set in /api/checkout when the session is
@@ -69,6 +69,28 @@ export default function CheckoutPage() {
 
   if (!mounted) {
     return <div className="container max-w-2xl py-14" />;
+  }
+
+  // Embedded checkout needs the Stripe publishable key in the browser. If it's
+  // not present (e.g. not set at build time), show a clear message instead of
+  // crashing when Stripe.js tries to initialize.
+  if (!STRIPE_PUBLISHABLE_KEY) {
+    return (
+      <div className="container flex max-w-2xl flex-col items-center py-24 text-center">
+        <p className="text-5xl">🍪</p>
+        <h1 className="mt-4 font-display text-3xl font-semibold">Checkout is briefly unavailable</h1>
+        <p className="mt-2 max-w-md text-muted-foreground">
+          We&rsquo;re having a momentary issue taking payment. Please try again shortly, or email{" "}
+          <a href="mailto:hello@claudettescookies.shop" className="text-primary hover:underline">
+            hello@claudettescookies.shop
+          </a>{" "}
+          and we&rsquo;ll sort your order out.
+        </p>
+        <Button asChild className="mt-6" variant="outline">
+          <Link href="/cart">Back to bag</Link>
+        </Button>
+      </div>
+    );
   }
 
   if (lines.length === 0 && !clientSecret) {
