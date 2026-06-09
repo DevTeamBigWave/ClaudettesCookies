@@ -89,7 +89,9 @@ async function fulfillOrder(
   const collected = full.collected_information?.shipping_details ?? full.shipping_details ?? null;
   const shipTo = {
     name: collected?.name ?? full.customer_details?.name ?? null,
-    phone: full.customer_details?.phone ?? null,
+    // The phone we collected at checkout rides in session metadata; fall back to
+    // anything Stripe captured. FedEx requires a recipient phone for labels.
+    phone: full.metadata?.phone ?? full.customer_details?.phone ?? null,
     address: collected?.address ?? full.customer_details?.address ?? null,
   };
 

@@ -17,6 +17,7 @@ import { formatMoney } from "@/lib/utils";
 export default function CheckoutPage() {
   const { lines, subtotalCents } = useCart();
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [orderNumber, setOrderNumber] = useState<number | null>(null);
@@ -36,6 +37,10 @@ export default function CheckoutPage() {
       setError("Enter your email to continue.");
       return;
     }
+    if (phone.replace(/\D/g, "").length < 10) {
+      setError("Enter a phone number — the carrier requires it for delivery.");
+      return;
+    }
     setCreating(true);
     try {
       const res = await fetch("/api/checkout", {
@@ -43,6 +48,7 @@ export default function CheckoutPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email,
+          phone,
           discountCode: code || undefined,
           items: lines.map((l) => ({
             variantId: l.variantId,
@@ -120,6 +126,20 @@ export default function CheckoutPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
+          </div>
+          <div className="space-y-2">
+            <label className="block text-sm font-medium">Phone</label>
+            <Input
+              type="tel"
+              inputMode="tel"
+              autoComplete="tel"
+              placeholder="(555) 123-4567"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">
+              Required by the carrier for delivery updates.
+            </p>
           </div>
           <div className="space-y-2">
             <label className="block text-sm font-medium">Promo code</label>

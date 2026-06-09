@@ -26,6 +26,9 @@ type CustomCheckoutCreateParams = Omit<Stripe.Checkout.SessionCreateParams, "ui_
 
 const Body = z.object({
   email: z.string().email(),
+  // Required for shipping carriers (FedEx rejects shipments without a recipient
+  // phone). Kept loose on format; we just need ~10 digits.
+  phone: z.string().trim().min(7).max(40),
   discountCode: z.string().trim().min(1).max(40).optional(),
   items: z
     .array(
@@ -46,7 +49,7 @@ export async function POST(req: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
-  const { email, items, discountCode } = parsed.data;
+  const { email, phone, items, discountCode } = parsed.data;
   const db = createAdminClient();
 
   // 1) Load variants from the DB and re-price every line server-side.
@@ -265,7 +268,9 @@ export async function POST(req: Request) {
       // Apply discount as a Stripe coupon so the displayed total matches our math.
       discounts:
         cart.discountCents > 0 ? [{ coupon: await ensureCoupon(cart.discountCents) }] : undefined,
-      metadata: { order_id: order.id, free_shipping: freeShipping ? "1" : "0" },
+      // phone rides in metadata so the webhook can attach it to the order's
+      // shipping address (Stripe's checkout address element has no phone field).
+      metadata: { order_id: order.id, free_shipping: freeShipping ? "1" : "0", phone },
       payment_intent_data: { metadata: { order_id: order.id } },
     };
     session = await stripe.checkout.sessions.create(
