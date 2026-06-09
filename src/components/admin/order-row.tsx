@@ -18,6 +18,7 @@ export interface OrderRowData {
 }
 
 const DELIVERY_LABEL: Record<string, string> = {
+  label_created: "🏷️ Label created",
   delivered: "✅ Delivered",
   in_transit: "🚚 In transit",
   exception: "⚠️ Delivery issue",

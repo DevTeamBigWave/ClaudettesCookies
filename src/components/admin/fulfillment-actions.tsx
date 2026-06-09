@@ -148,6 +148,7 @@ function DeliveryBadge({
   deliveredAt: string | null;
 }) {
   const map: Record<string, { label: string; cls: string }> = {
+    label_created: { label: "Label created", cls: "bg-stone-200 text-stone-700" },
     delivered: { label: "Delivered", cls: "bg-green-100 text-green-800" },
     in_transit: { label: "In transit", cls: "bg-blue-100 text-blue-800" },
     exception: { label: "Delivery issue", cls: "bg-red-100 text-red-700" },

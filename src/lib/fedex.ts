@@ -228,7 +228,12 @@ export async function getFedExRates(opts: {
   return options.sort((a, b) => a.amountCents - b.amountCents);
 }
 
-export type DeliveryStatus = "in_transit" | "delivered" | "exception" | "unknown";
+export type DeliveryStatus =
+  | "label_created"
+  | "in_transit"
+  | "delivered"
+  | "exception"
+  | "unknown";
 
 export interface TrackResult {
   status: DeliveryStatus;
@@ -288,10 +293,12 @@ export async function trackShipment(trackingNumber: string): Promise<TrackResult
   const statusText = tr?.latestStatusDetail?.statusByLocale || tr?.latestStatusDetail?.description || "Unknown";
   const deliveredAt = tr?.dateAndTimes?.find((d) => d.type === "ACTUAL_DELIVERY")?.dateTime ?? null;
 
-  let status: DeliveryStatus = "in_transit";
+  let status: DeliveryStatus;
   if (code === "DL") status = "delivered";
   else if (["DE", "SE", "CA", "RS", "RD"].includes(code)) status = "exception"; // delivery/shipment exception, cancelled, returned
+  else if (code === "OC") status = "label_created"; // label made, not yet picked up
   else if (!code) status = "unknown";
+  else status = "in_transit"; // PU (picked up), IT, OD, AR, DP, …
 
   return { status, statusText, deliveredAt: status === "delivered" ? deliveredAt : null };
 }
