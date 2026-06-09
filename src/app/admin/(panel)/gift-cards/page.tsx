@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { PageHeader, DataTable, StatusPill, StatCard } from "@/components/admin/ui";
+import { IssueGiftCardForm } from "@/components/admin/issue-gift-card-form";
 import { formatMoney, formatDate } from "@/lib/utils";
 
 export default async function GiftCardsPage() {
@@ -17,6 +18,9 @@ export default async function GiftCardsPage() {
   return (
     <>
       <PageHeader title="Gift Cards" description="Issued cards and outstanding liability." />
+      <div className="mb-6">
+        <IssueGiftCardForm />
+      </div>
       <div className="mb-6 grid gap-4 sm:grid-cols-3">
         <StatCard label="Outstanding balance" value={formatMoney(outstanding)} hint="active cards" />
         <StatCard label="Cards issued" value={String(cards?.length ?? 0)} />

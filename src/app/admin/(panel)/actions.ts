@@ -6,10 +6,10 @@ import { requireAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendCampaign } from "@/lib/campaigns";
 import { startBackgroundDrop } from "@/lib/blog-generator";
-import { slugify } from "@/lib/utils";
+import { slugify, generateGiftCardCode } from "@/lib/utils";
 import { env } from "@/lib/env";
 import { sendEmail } from "@/lib/resend";
-import { orderShippedEmail } from "@/lib/emails";
+import { orderShippedEmail, giftCardEmail } from "@/lib/emails";
 import { trackShipment } from "@/lib/fedex";
 import { trackingUrl } from "@/lib/tracking";
 import { deleteAbandonedOrders } from "@/lib/cleanup";
@@ -299,6 +299,69 @@ export async function cleanupAbandonedOrders(): Promise<{ deleted: number }> {
   const deleted = await deleteAbandonedOrders(24);
   revalidatePath("/admin/orders");
   return { deleted };
+}
+
+// ── Gift cards ────────────────────────────────────────────────────────────────
+const IssueGiftCardInput = z.object({
+  amountDollars: z.coerce.number().positive().max(1000),
+  recipientEmail: z.union([z.string().email(), z.literal("")]).optional(),
+  recipientName: z.string().trim().max(80).optional(),
+  giftMessage: z.string().trim().max(500).optional(),
+  expiresAt: z.string().optional(),
+});
+
+/**
+ * Issue a gift card directly from the admin (comps, promos, support). Creates an
+ * active card with a fresh code and, if a recipient email is given, emails it.
+ * Returns the new code so the admin can copy/share it.
+ */
+export async function issueGiftCard(input: {
+  amountDollars: string | number;
+  recipientEmail?: string;
+  recipientName?: string;
+  giftMessage?: string;
+  expiresAt?: string;
+}): Promise<{ code: string } | { error: string }> {
+  await requireAdmin();
+  const parsed = IssueGiftCardInput.safeParse(input);
+  if (!parsed.success) return { error: "Enter a valid amount (up to $1,000)." };
+  const { amountDollars, recipientEmail, recipientName, giftMessage, expiresAt } = parsed.data;
+  const cents = Math.round(amountDollars * 100);
+  if (cents <= 0) return { error: "Amount must be more than $0." };
+
+  const db = createAdminClient();
+  const code = generateGiftCardCode();
+  const { error } = await db.from("gift_cards").insert({
+    code,
+    initial_cents: cents,
+    balance_cents: cents,
+    status: "active",
+    recipient_email: recipientEmail || null,
+    recipient_name: recipientName || null,
+    gift_message: giftMessage || null,
+    expires_at: expiresAt ? new Date(expiresAt).toISOString() : null,
+  });
+  if (error) {
+    console.error("Issue gift card failed:", error.message);
+    return { error: "Could not issue the gift card." };
+  }
+
+  if (recipientEmail) {
+    await sendEmail({
+      to: recipientEmail,
+      subject: "🎁 You've got a Claudette's gift card",
+      html: giftCardEmail({
+        code,
+        amountCents: cents,
+        recipientName: recipientName || "friend",
+        senderMessage: giftMessage,
+        siteUrl: env.NEXT_PUBLIC_SITE_URL,
+      }),
+    }).catch((e) => console.error("Gift card email failed:", e));
+  }
+
+  revalidatePath("/admin/gift-cards");
+  return { code };
 }
 
 /** Undo fulfillment (e.g. shipped by mistake). Clears ship + delivery state. */
