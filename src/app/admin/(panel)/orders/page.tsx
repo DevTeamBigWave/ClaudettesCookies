@@ -4,19 +4,19 @@ import { OrderRow } from "@/components/admin/order-row";
 
 export default async function OrdersPage() {
   const db = createAdminClient();
-  // select("*") instead of naming columns: keeps the whole list from blanking
-  // out if a newly-added column (e.g. delivery_status) hasn't been migrated in
-  // Supabase yet — missing columns just render as empty rather than erroring.
+  // Only real orders — hide 'pending' rows, which are abandoned checkouts (a
+  // pending order is created when someone starts checkout but never pays).
   const { data: orders, error } = await db
     .from("orders")
     .select("*")
+    .neq("status", "pending")
     .order("created_at", { ascending: false })
     .limit(100);
   if (error) console.error("Orders list query failed:", error.message);
 
   return (
     <>
-      <PageHeader title="Orders" description="Every order, newest first. Click a row to open it." />
+      <PageHeader title="Orders" description="Paid orders, newest first. Click a row to open it." />
       <DataTable columns={["Order", "Customer", "Payment", "Fulfillment", "Shipping", "Total", "Date"]}>
         {(orders ?? []).map((o) => (
           <OrderRow key={o.id} order={o} />
