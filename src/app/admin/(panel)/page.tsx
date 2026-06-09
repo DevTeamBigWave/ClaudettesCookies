@@ -15,6 +15,7 @@ export default async function AdminDashboard() {
       db
         .from("orders")
         .select("id, order_number, email, status, total_cents, created_at")
+        .neq("status", "pending") // hide abandoned checkouts; show only real orders
         .order("created_at", { ascending: false })
         .limit(8),
     ]);
