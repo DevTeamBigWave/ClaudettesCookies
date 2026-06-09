@@ -78,11 +78,15 @@ Sign in to the admin at `/admin/login` with an email listed in `ADMIN_EMAILS`.
 2. Add all variables from `.env.example` to the service.
 3. Point a Stripe webhook at `https://<domain>/api/webhooks/stripe`
    (event: `checkout.session.completed`) and set `STRIPE_WEBHOOK_SECRET`.
-4. Add three Railway Cron schedules, each sending `Authorization: Bearer $CRON_SECRET`:
+4. Add Railway Cron schedules, each sending `Authorization: Bearer $CRON_SECRET`:
    - hourly → `POST /api/cron/abandoned-cart`
    - every 5 min → `POST /api/cron/scheduled-campaigns`
    - weekly (Sat 13:00 UTC ≈ 9am ET) → `POST /api/cron/generate-blog-post`
      (needs `ANTHROPIC_API_KEY`; auto-writes one published Journal post)
+   - hourly → `POST /api/cron/track-shipments`
+     (polls FedEx; auto-emails tracking on pickup + refreshes delivery status)
+   - daily → `POST /api/cron/cleanup-pending`
+     (purges abandoned checkouts — pending orders > 24h old)
 5. Health check: `/api/health`.
 
 See [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) for the full runbook.
