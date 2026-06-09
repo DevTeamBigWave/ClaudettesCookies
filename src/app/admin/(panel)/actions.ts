@@ -12,6 +12,7 @@ import { sendEmail } from "@/lib/resend";
 import { orderShippedEmail } from "@/lib/emails";
 import { trackShipment } from "@/lib/fedex";
 import { trackingUrl } from "@/lib/tracking";
+import { deleteAbandonedOrders } from "@/lib/cleanup";
 import type { DiscountType, BlogGenerationJob } from "@/types/db";
 
 // ── Products ────────────────────────────────────────────────────────────────
@@ -290,6 +291,14 @@ export async function markOrderShipped(formData: FormData) {
 
   revalidatePath(`/admin/orders/${orderId}`);
   revalidatePath("/admin/orders");
+}
+
+/** Manually purge abandoned checkouts (pending orders > 24h old). */
+export async function cleanupAbandonedOrders(): Promise<{ deleted: number }> {
+  await requireAdmin();
+  const deleted = await deleteAbandonedOrders(24);
+  revalidatePath("/admin/orders");
+  return { deleted };
 }
 
 /** Undo fulfillment (e.g. shipped by mistake). Clears ship + delivery state. */

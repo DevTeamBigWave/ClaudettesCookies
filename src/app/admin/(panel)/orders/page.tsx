@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { PageHeader, DataTable } from "@/components/admin/ui";
 import { OrderRow } from "@/components/admin/order-row";
+import { CleanupOrdersButton } from "@/components/admin/cleanup-orders-button";
 
 export default async function OrdersPage() {
   const db = createAdminClient();
@@ -16,7 +17,11 @@ export default async function OrdersPage() {
 
   return (
     <>
-      <PageHeader title="Orders" description="Paid orders, newest first. Click a row to open it." />
+      <PageHeader
+        title="Orders"
+        description="Paid orders, newest first. Click a row to open it."
+        action={<CleanupOrdersButton />}
+      />
       <DataTable columns={["Order", "Customer", "Payment", "Fulfillment", "Shipping", "Total", "Date"]}>
         {(orders ?? []).map((o) => (
           <OrderRow key={o.id} order={o} />
