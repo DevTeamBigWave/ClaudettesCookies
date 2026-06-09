@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { PageHeader, DataTable, StatusPill } from "@/components/admin/ui";
 import { PostForm } from "@/components/admin/post-form";
@@ -35,13 +36,26 @@ export default async function BlogAdmin() {
         <DataTable columns={["Title", "Status", "Tags", "Updated", ""]}>
           {((posts as BlogPost[]) ?? []).map((p) => (
             <tr key={p.id} className="hover:bg-secondary/40">
-              <td className="px-4 py-3">
-                <div className="font-medium">{p.title}</div>
-                <div className="text-xs text-muted-foreground">/blog/{p.slug}</div>
+              <td className="min-w-[220px] px-4 py-3">
+                {p.status === "published" ? (
+                  // Published → open the live post; draft → admin view of the copy.
+                  <a
+                    href={`/blog/${p.slug}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-medium hover:text-primary"
+                  >
+                    {p.title}
+                  </a>
+                ) : (
+                  <Link href={`/admin/blog/${p.id}`} className="font-medium hover:text-primary">
+                    {p.title}
+                  </Link>
+                )}
               </td>
               <td className="px-4 py-3"><StatusPill status={p.status} /></td>
               <td className="px-4 py-3 text-xs text-muted-foreground">{p.tags.join(", ") || "—"}</td>
-              <td className="px-4 py-3 text-muted-foreground">{formatDate(p.updated_at)}</td>
+              <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatDate(p.updated_at)}</td>
               <td className="px-4 py-3 text-right"><PostStatusToggle id={p.id} status={p.status} /></td>
             </tr>
           ))}
