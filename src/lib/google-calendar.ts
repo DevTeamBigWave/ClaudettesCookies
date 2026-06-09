@@ -195,11 +195,31 @@ export interface CalendarEventInput {
   description?: string;
   /** YYYY-MM-DD (store time) the bake-window event should land on. */
   date: string;
+  /** Optional sequence number (e.g. order #) used to spread same-day orders
+   *  across distinct 30-min slots so they don't overlap into one block. */
+  slot?: number;
 }
 
 /** The bake day for an order: the day after it's placed, in store time. */
 export function bakeDayYmd(placedAt: Date): string {
   return nextDay(ymdInTimeZone(placedAt, CAL_TIME_ZONE));
+}
+
+/**
+ * Time window for a bake event. Without a slot, the full 08:00–11:00 block.
+ * With a slot, a distinct 30-min slot inside that window (wrapping every 6) so
+ * multiple orders on the same bake day stack in sequence instead of landing on
+ * the identical time and hiding each other.
+ */
+function bakeWindow(date: string, slot?: number): { start: string; end: string } {
+  if (slot == null) {
+    return { start: `${date}T${BAKE_START}`, end: `${date}T${BAKE_END}` };
+  }
+  const idx = ((slot % 6) + 6) % 6; // 0..5 → 8:00, 8:30, … 10:30
+  const startMin = 8 * 60 + idx * 30;
+  const fmt = (m: number) =>
+    `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}:00`;
+  return { start: `${date}T${fmt(startMin)}`, end: `${date}T${fmt(startMin + 30)}` };
 }
 
 /**
@@ -212,6 +232,7 @@ export async function createCalendarEvent(input: CalendarEventInput): Promise<st
   if (!token) return null; // not connected — skip
 
   const calendarId = encodeURIComponent(env.GOOGLE_CALENDAR_ID);
+  const { start, end } = bakeWindow(input.date, input.slot);
   const res = await fetch(
     `https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events`,
     {
@@ -222,8 +243,8 @@ export async function createCalendarEvent(input: CalendarEventInput): Promise<st
         description: input.description,
         // Timed bake block so it shows on the day's agenda, not as an all-day
         // banner that's easy to miss. timeZone makes the naive time local.
-        start: { dateTime: `${input.date}T${BAKE_START}`, timeZone: CAL_TIME_ZONE },
-        end: { dateTime: `${input.date}T${BAKE_END}`, timeZone: CAL_TIME_ZONE },
+        start: { dateTime: start, timeZone: CAL_TIME_ZONE },
+        end: { dateTime: end, timeZone: CAL_TIME_ZONE },
       }),
     },
   );

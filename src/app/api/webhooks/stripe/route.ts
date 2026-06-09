@@ -192,6 +192,9 @@ async function fulfillOrder(
           `${env.NEXT_PUBLIC_SITE_URL}/admin/orders`,
         // Bake day = the day after the order is placed, 8–11am store time.
         date: bakeDayYmd(new Date()),
+        // Spread same-day orders across distinct 30-min slots so they don't
+        // overlap into one block on the calendar.
+        slot: order.order_number,
       });
       if (eventId) {
         await db.from("orders").update({ google_event_id: eventId }).eq("id", orderId);
