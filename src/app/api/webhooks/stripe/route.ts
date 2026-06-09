@@ -81,6 +81,18 @@ async function fulfillOrder(
   });
   const rate = full.shipping_cost?.shipping_rate;
   const rateObj = rate && typeof rate !== "string" ? rate : null;
+
+  // The shipping address the customer typed into the ShippingAddressElement lands
+  // in collected_information.shipping_details (or the legacy shipping_details) —
+  // NOT customer_details (that's billing, which Link/Apple Pay may leave empty).
+  // Normalize to { name, phone, address } for the order + emails.
+  const collected = full.collected_information?.shipping_details ?? full.shipping_details ?? null;
+  const shipTo = {
+    name: collected?.name ?? full.customer_details?.name ?? null,
+    phone: full.customer_details?.phone ?? null,
+    address: collected?.address ?? full.customer_details?.address ?? null,
+  };
+
   const reconciliation: Record<string, unknown> = {
     shipping_cents: full.shipping_cost?.amount_total ?? 0,
     shipping_method: rateObj?.display_name ?? null,
@@ -88,8 +100,8 @@ async function fulfillOrder(
     shipping_carrier: rateObj?.metadata?.carrier ?? null,
   };
   if (full.amount_total != null) reconciliation.total_cents = full.amount_total;
-  if (full.customer_details) {
-    reconciliation.shipping_address = full.customer_details as unknown as Record<string, unknown>;
+  if (shipTo.address) {
+    reconciliation.shipping_address = shipTo as unknown as Record<string, unknown>;
   }
   await db.from("orders").update(reconciliation).eq("id", orderId);
 
@@ -132,15 +144,14 @@ async function fulfillOrder(
 
     // Notify the store of every new order, with the address + box details so
     // they can start baking and packing. Best-effort; never blocks fulfillment.
-    const details = full.customer_details;
     await sendEmail({
       to: "hello@claudettescookies.shop",
-      subject: `New order #${order.order_number} — ${details?.name ?? order.email}`,
+      subject: `New order #${order.order_number} — ${shipTo.name ?? order.email}`,
       html: newOrderEmail({
         orderNumber: order.order_number,
-        customerName: details?.name,
+        customerName: shipTo.name,
         customerEmail: order.email,
-        phone: details?.phone,
+        phone: shipTo.phone,
         items: (items ?? []).map((i) => ({
           title: i.title,
           variantTitle: i.variant_title,
@@ -152,7 +163,7 @@ async function fulfillOrder(
         shippingCents: order.shipping_cents,
         totalCents: order.total_cents,
         shippingMethod: rateObj?.display_name ?? null,
-        address: details?.address ?? null,
+        address: shipTo.address,
         siteUrl: env.NEXT_PUBLIC_SITE_URL,
       }),
     }).catch((e) => console.error("Store notification email failed:", e));
