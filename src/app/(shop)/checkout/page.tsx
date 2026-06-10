@@ -255,6 +255,16 @@ function PaymentArea(props: {
     selectedId !== null &&
     !paying;
 
+  // Tell the customer exactly what's blocking Pay (otherwise a disabled button
+  // with no reason is baffling — e.g. Link fills everything but the phone).
+  let payHint: string | null = null;
+  if (!paying) {
+    if (!hasEmail) payHint = "Enter your email above to continue.";
+    else if (!hasPhone) payHint = "Add a phone number above — the carrier requires it for shipping.";
+    else if (!props.pickup && !addressComplete) payHint = "Complete your shipping address.";
+    else if (!paymentComplete) payHint = "Add your payment details below.";
+  }
+
   const returnUrl = `${window.location.origin}/checkout/success?order=${props.orderNumber ?? ""}${
     props.pickup ? "&pickup=1" : ""
   }`;
@@ -362,7 +372,11 @@ function PaymentArea(props: {
         <Button className="w-full" size="lg" onClick={pay} disabled={!canPay}>
           {paying ? "Processing…" : `Pay ${totalLabel}`.trim()}
         </Button>
-        <p className="mt-3 text-center text-xs text-muted-foreground">Secure checkout powered by Stripe.</p>
+        {payHint && !canPay ? (
+          <p className="mt-3 text-center text-xs font-medium text-primary">{payHint}</p>
+        ) : (
+          <p className="mt-3 text-center text-xs text-muted-foreground">Secure checkout powered by Stripe.</p>
+        )}
       </div>
     </div>
   );
