@@ -89,9 +89,9 @@ async function fulfillOrder(
   const collected = full.collected_information?.shipping_details ?? full.shipping_details ?? null;
   const shipTo = {
     name: collected?.name ?? full.customer_details?.name ?? null,
-    // The phone we collected at checkout rides in session metadata; fall back to
-    // anything Stripe captured. FedEx requires a recipient phone for labels.
-    phone: full.metadata?.phone ?? full.customer_details?.phone ?? null,
+    // Phone now comes from Stripe's phone_number_collection (wallet/SDK); the
+    // session metadata is a fallback. FedEx requires a recipient phone.
+    phone: full.customer_details?.phone ?? full.metadata?.phone ?? null,
     address: collected?.address ?? full.customer_details?.address ?? null,
   };
 
@@ -101,6 +101,20 @@ async function fulfillOrder(
     shipping_service: rateObj?.metadata?.service_type ?? null,
     shipping_carrier: rateObj?.metadata?.carrier ?? null,
   };
+
+  // The order was created with a placeholder email (the real one arrives from
+  // the wallet/SDK). Reconcile it and link/create the customer BEFORE finalizing
+  // (finalize_paid_order rolls revenue onto orders.customer_id).
+  const realEmail = full.customer_details?.email ?? full.customer_email ?? null;
+  if (realEmail) {
+    reconciliation.email = realEmail;
+    const { data: cust } = await db
+      .from("customers")
+      .upsert({ email: realEmail }, { onConflict: "email" })
+      .select("id")
+      .single();
+    if (cust?.id) reconciliation.customer_id = cust.id;
+  }
   if (full.amount_total != null) reconciliation.total_cents = full.amount_total;
   // Store the contact even for pickup (no address) so we keep the phone/name.
   if (shipTo.address || shipTo.phone) {

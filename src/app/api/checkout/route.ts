@@ -26,10 +26,11 @@ type CustomCheckoutCreateParams = Omit<Stripe.Checkout.SessionCreateParams, "ui_
 };
 
 const Body = z.object({
-  email: z.string().email(),
-  // Required for shipping carriers (FedEx rejects shipments without a recipient
-  // phone). Kept loose on format; we just need ~10 digits.
-  phone: z.string().trim().min(7).max(40),
+  // In the unified flow these arrive from the wallet (Apple Pay) or via the
+  // Checkout SDK (updateEmail/updatePhoneNumber) after the session exists, so
+  // they're optional at create time; the webhook reconciles the real values.
+  email: z.string().email().optional(),
+  phone: z.string().trim().min(7).max(40).optional(),
   // When true, local pickup: no shipping address, no carrier, free.
   pickup: z.boolean().optional(),
   discountCode: z.string().trim().min(1).max(40).optional(),
@@ -53,6 +54,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
   const { email, phone, items, discountCode, pickup } = parsed.data;
+  // Placeholder until the customer's real email arrives (wallet or SDK) and the
+  // webhook reconciles it. orders.email is NOT NULL, so we always set something.
+  const orderEmail = email || "pending@orders.claudettescookies.shop";
   const db = createAdminClient();
 
   // 1) Load variants from the DB and re-price every line server-side.
@@ -148,8 +152,8 @@ export async function POST(req: Request) {
   }
 
   // Enforce once-per-customer: reject if this email already redeemed the code
-  // on a paid/fulfilled order.
-  if (discount?.once_per_customer) {
+  // on a paid/fulfilled order. Only checkable when we already know the email.
+  if (discount?.once_per_customer && email) {
     const { count } = await db
       .from("orders")
       .select("id", { count: "exact", head: true })
@@ -168,19 +172,18 @@ export async function POST(req: Request) {
   const cart = priceCart(priced, discount, 0);
   const freeShipping = qualifiesForFreeShipping(cart.subtotalCents, cart.discountCents, discount);
 
-  // 3) Upsert the customer (guest checkout friendly).
-  const { data: customer } = await db
-    .from("customers")
-    .upsert({ email }, { onConflict: "email" })
-    .select("id")
-    .single();
+  // 3) Upsert the customer when we already know the email; otherwise the webhook
+  //    links/creates the customer from the wallet/SDK email after payment.
+  const customer = email
+    ? (await db.from("customers").upsert({ email }, { onConflict: "email" }).select("id").single()).data
+    : null;
 
   // 4) Create the pending order + items.
   const { data: order, error: orderErr } = await db
     .from("orders")
     .insert({
       customer_id: customer?.id ?? null,
-      email,
+      email: orderEmail,
       status: "pending",
       fulfillment_type: pickup ? "pickup" : "ship",
       subtotal_cents: cart.subtotalCents,
@@ -277,17 +280,20 @@ export async function POST(req: Request) {
     const params: CustomCheckoutCreateParams = {
       mode: "payment",
       ui_mode: "custom",
-      customer_email: email,
+      // Only set when known up front; otherwise the wallet/SDK provides it.
+      ...(email ? { customer_email: email } : {}),
       line_items: lineItems,
       // No shipping address for pickup orders.
       shipping_address_collection: pickup ? undefined : { allowed_countries: ["US"] },
       shipping_options: shippingOptions,
+      // Collect a phone number (FedEx requires a recipient phone). Wallets fill
+      // it; the manual flow sets it via the SDK (updatePhoneNumber).
+      phone_number_collection: { enabled: true },
       // Apply discount as a Stripe coupon so the displayed total matches our math.
       discounts:
         cart.discountCents > 0 ? [{ coupon: await ensureCoupon(cart.discountCents) }] : undefined,
-      // phone rides in metadata so the webhook can attach it to the order's
-      // shipping address (Stripe's checkout address element has no phone field).
-      metadata: { order_id: order.id, free_shipping: freeShipping ? "1" : "0", phone },
+      // phone (when known at create) is reconciled by the webhook as a fallback.
+      metadata: { order_id: order.id, free_shipping: freeShipping ? "1" : "0", ...(phone ? { phone } : {}) },
       payment_intent_data: { metadata: { order_id: order.id } },
     };
     session = await stripe.checkout.sessions.create(
