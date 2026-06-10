@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   CheckoutElementsProvider,
@@ -19,8 +19,8 @@ export default function CheckoutPage() {
   const { lines, subtotalCents } = useCart();
   const [mounted, setMounted] = useState(false);
 
-  // Contact + promo live in the parent so they survive the provider re-mounting
-  // when the session is recreated (pickup toggle / promo apply).
+  // Contact + promo live in the parent so they render instantly (no waiting on
+  // Stripe) and survive the provider re-mounting when the session is recreated.
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [promo, setPromo] = useState("");
@@ -33,42 +33,34 @@ export default function CheckoutPage() {
 
   useEffect(() => setMounted(true), []);
 
-  // Create (or recreate) the session for the current cart + options. Recreating
-  // is how we apply a promo or switch ship/pickup, since those change the
-  // session's line totals / shipping config.
-  const createSession = useCallback(
-    async (opts: { pickup: boolean; discountCode?: string }) => {
-      setCreating(true);
-      setError(null);
-      try {
-        const res = await fetch("/api/checkout", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            pickup: opts.pickup,
-            discountCode: opts.discountCode || undefined,
-            items: lines.map((l) => ({
-              variantId: l.variantId,
-              quantity: l.quantity,
-              composition: l.composition?.map((p) => ({ handle: p.handle, qty: p.qty })),
-            })),
-          }),
-        });
-        const data = await res.json().catch(() => ({}) as { clientSecret?: string; orderNumber?: number; error?: string });
-        if (!res.ok) throw new Error(data.error ?? `Checkout failed (${res.status})`);
-        if (!data.clientSecret) throw new Error("Could not start checkout.");
-        setClientSecret(data.clientSecret);
-        setOrderNumber(data.orderNumber ?? null);
-        return true;
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Could not start checkout");
-        return false;
-      } finally {
-        setCreating(false);
-      }
-    },
-    [lines],
-  );
+  async function createSession(opts: { pickup: boolean; discountCode?: string }) {
+    setCreating(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          pickup: opts.pickup,
+          discountCode: opts.discountCode || undefined,
+          items: lines.map((l) => ({
+            variantId: l.variantId,
+            quantity: l.quantity,
+            composition: l.composition?.map((p) => ({ handle: p.handle, qty: p.qty })),
+          })),
+        }),
+      });
+      const data = await res.json().catch(() => ({}) as { clientSecret?: string; orderNumber?: number; error?: string });
+      if (!res.ok) throw new Error(data.error ?? `Checkout failed (${res.status})`);
+      if (!data.clientSecret) throw new Error("Could not start checkout.");
+      setClientSecret(data.clientSecret);
+      setOrderNumber(data.orderNumber ?? null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not start checkout");
+    } finally {
+      setCreating(false);
+    }
+  }
 
   // Create the session once, as soon as the cart is known.
   const created = useRef(false);
@@ -77,7 +69,8 @@ export default function CheckoutPage() {
       created.current = true;
       createSession({ pickup: false });
     }
-  }, [mounted, lines.length, createSession]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mounted, lines.length]);
 
   async function changePickup(next: boolean) {
     if (next === pickup || creating) return;
@@ -127,10 +120,67 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="container max-w-2xl py-14">
-      <h1 className="mb-8 font-display text-4xl font-semibold">Checkout</h1>
-      {error && <p className="mb-4 text-sm text-destructive">{error}</p>}
+    <div className="container max-w-2xl space-y-6 py-14">
+      <h1 className="font-display text-4xl font-semibold">Checkout</h1>
+      {error && <p className="text-sm text-destructive">{error}</p>}
 
+      {/* Ship vs pickup — instant */}
+      <div className="grid grid-cols-2 gap-2">
+        {[
+          { v: false, label: "Ship it", hint: "FedEx to your door" },
+          { v: true, label: "Pick up", hint: "Free · in person" },
+        ].map((opt) => (
+          <button
+            key={opt.label}
+            type="button"
+            disabled={creating}
+            onClick={() => changePickup(opt.v)}
+            className={`rounded-xl border p-3 text-left transition-colors disabled:opacity-60 ${
+              pickup === opt.v ? "border-primary bg-secondary" : "border-border"
+            }`}
+          >
+            <span className="block text-sm font-semibold">{opt.label}</span>
+            <span className="block text-xs text-muted-foreground">{opt.hint}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Contact — instant */}
+      <section className="space-y-3 rounded-2xl border border-border bg-card p-6">
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-muted-foreground">Subtotal</span>
+          <span className="font-medium">{formatMoney(subtotalCents())}</span>
+        </div>
+        <div className="space-y-2">
+          <label className="block text-sm font-medium">Email</label>
+          <Input type="email" placeholder="you@email.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+        </div>
+        <div className="space-y-2">
+          <label className="block text-sm font-medium">Phone</label>
+          <Input
+            type="tel"
+            inputMode="tel"
+            autoComplete="tel"
+            placeholder="(555) 123-4567"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+          />
+          <p className="text-xs text-muted-foreground">
+            {pickup ? "So we can reach you when your order is ready." : "Required by the carrier for delivery updates."}
+          </p>
+        </div>
+        <div className="space-y-2">
+          <label className="block text-sm font-medium">Promo code</label>
+          <div className="flex gap-2">
+            <Input placeholder="WELCOME10" value={promo} onChange={(e) => setPromo(e.target.value.toUpperCase())} />
+            <Button type="button" variant="outline" disabled={creating || !promo} onClick={applyPromo}>
+              Apply
+            </Button>
+          </div>
+        </div>
+      </section>
+
+      {/* Stripe elements — load once the session is ready (form above stays instant) */}
       {clientSecret ? (
         <CheckoutElementsProvider
           key={clientSecret}
@@ -140,43 +190,22 @@ export default function CheckoutPage() {
             elementsOptions: { appearance: { theme: "stripe", variables: { borderRadius: "12px" } } },
           }}
         >
-          <CheckoutInner
-            pickup={pickup}
-            onPickupChange={changePickup}
-            reloading={creating}
-            orderNumber={orderNumber}
-            subtotalCents={subtotalCents()}
-            email={email}
-            setEmail={setEmail}
-            phone={phone}
-            setPhone={setPhone}
-            promo={promo}
-            setPromo={setPromo}
-            onApplyPromo={applyPromo}
-          />
+          <PaymentArea pickup={pickup} orderNumber={orderNumber} email={email} phone={phone} />
         </CheckoutElementsProvider>
       ) : (
-        <p className="text-sm text-muted-foreground">
-          {creating ? "Starting secure checkout…" : "Loading…"}
-        </p>
+        <div className="rounded-2xl border border-border bg-card p-6 text-sm text-muted-foreground">
+          {creating ? "Loading secure payment…" : "…"}
+        </div>
       )}
     </div>
   );
 }
 
-function CheckoutInner(props: {
+function PaymentArea(props: {
   pickup: boolean;
-  onPickupChange: (next: boolean) => void;
-  reloading: boolean;
   orderNumber: number | null;
-  subtotalCents: number;
   email: string;
-  setEmail: (v: string) => void;
   phone: string;
-  setPhone: (v: string) => void;
-  promo: string;
-  setPromo: (v: string) => void;
-  onApplyPromo: () => void;
 }) {
   const result = useCheckoutElements();
   const co = result.type === "success" ? result.checkout : null;
@@ -187,20 +216,25 @@ function CheckoutInner(props: {
   const [paymentComplete, setPaymentComplete] = useState(false);
   const [expressReady, setExpressReady] = useState(false);
 
-  // Re-apply the parent's email/phone to the session once it's ready. This runs
-  // again whenever the session is recreated (promo/pickup) because the provider
-  // re-mounts this component; the ref keeps it from firing on every render.
-  const appliedRef = useRef(false);
+  // Apply email/phone to the session (debounced) whenever they change. Covers
+  // both the initial values and edits, and re-applies after a session recreate.
+  const emailValid = /\S+@\S+\.\S+/.test(props.email);
+  const phoneValid = props.phone.replace(/\D/g, "").length >= 10;
   useEffect(() => {
-    if (!co || appliedRef.current) return;
-    appliedRef.current = true;
-    if (props.email) co.updateEmail(props.email).catch(() => {});
-    if (props.phone) co.updatePhoneNumber(props.phone).catch(() => {});
+    if (!co || !emailValid) return;
+    const t = setTimeout(() => co.updateEmail(props.email).catch(() => {}), 350);
+    return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [co]);
+  }, [co, props.email]);
+  useEffect(() => {
+    if (!co || !phoneValid) return;
+    const t = setTimeout(() => co.updatePhoneNumber(props.phone).catch(() => {}), 350);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [co, props.phone]);
 
   if (result.type === "loading") {
-    return <p className="text-sm text-muted-foreground">Loading secure checkout…</p>;
+    return <p className="text-sm text-muted-foreground">Loading secure payment…</p>;
   }
   if (result.type === "error") {
     return <p className="text-sm text-destructive">{result.error.message}</p>;
@@ -209,12 +243,9 @@ function CheckoutInner(props: {
 
   const totalLabel = checkout.total?.total?.amount ?? "";
   const selectedId = checkout.shipping?.shippingOption?.id ?? null;
-  const emailOk = /\S+@\S+\.\S+/.test(props.email);
-  const phoneOk = props.phone.replace(/\D/g, "").length >= 10;
-  // Contact can come from our fields OR from Link / a wallet (which set it on the
-  // session). Gate on the session's values so Link users don't have to retype.
-  const hasEmail = Boolean(checkout.email) || emailOk;
-  const hasPhone = props.pickup || Boolean(checkout.phoneNumber) || phoneOk; // FedEx needs it only for shipping
+  // Contact can come from our fields OR Link / a wallet (set on the session).
+  const hasEmail = Boolean(checkout.email) || emailValid;
+  const hasPhone = props.pickup || Boolean(checkout.phoneNumber) || phoneValid;
   const canPay =
     hasEmail &&
     hasPhone &&
@@ -222,8 +253,7 @@ function CheckoutInner(props: {
     paymentComplete &&
     checkout.shippingOptions.length > 0 &&
     selectedId !== null &&
-    !paying &&
-    !props.reloading;
+    !paying;
 
   const returnUrl = `${window.location.origin}/checkout/success?order=${props.orderNumber ?? ""}${
     props.pickup ? "&pickup=1" : ""
@@ -233,8 +263,8 @@ function CheckoutInner(props: {
     setPaying(true);
     setPayError(null);
     try {
-      if (props.email) await checkout.updateEmail(props.email);
-      if (props.phone) await checkout.updatePhoneNumber(props.phone);
+      if (emailValid) await checkout.updateEmail(props.email);
+      if (phoneValid) await checkout.updatePhoneNumber(props.phone);
       const res = await checkout.confirm({ returnUrl });
       if (res.type === "error") {
         setPayError(res.error.message);
@@ -248,10 +278,8 @@ function CheckoutInner(props: {
 
   return (
     <div className="space-y-6">
-      {/* One-tap express checkout (Apple Pay / Google Pay / Link). Fills contact
-          (+ address for shipping) and pays in one tap. Shows for pickup too —
-          the session just won't ask for a shipping address. Hidden only when no
-          wallet is available. */}
+      {/* One-tap express checkout (Apple Pay / Google Pay / Link) — fills contact
+          (+ address for shipping) and pays in one tap. */}
       <div>
         <ExpressCheckoutElement
           onReady={(e) => setExpressReady(Boolean(e.availablePaymentMethods))}
@@ -267,81 +295,11 @@ function CheckoutInner(props: {
         />
         {expressReady && (
           <div className="my-5 flex items-center gap-3 text-xs uppercase tracking-wide text-muted-foreground">
-            <span className="h-px flex-1 bg-border" /> or check out below{" "}
+            <span className="h-px flex-1 bg-border" /> or pay below{" "}
             <span className="h-px flex-1 bg-border" />
           </div>
         )}
       </div>
-
-      {/* Ship vs pickup */}
-      <div className="grid grid-cols-2 gap-2">
-        {[
-          { v: false, label: "Ship it", hint: "FedEx to your door" },
-          { v: true, label: "Pick up", hint: "Free · in person" },
-        ].map((opt) => (
-          <button
-            key={opt.label}
-            type="button"
-            disabled={props.reloading}
-            onClick={() => props.onPickupChange(opt.v)}
-            className={`rounded-xl border p-3 text-left transition-colors disabled:opacity-60 ${
-              props.pickup === opt.v ? "border-primary bg-secondary" : "border-border"
-            }`}
-          >
-            <span className="block text-sm font-semibold">{opt.label}</span>
-            <span className="block text-xs text-muted-foreground">{opt.hint}</span>
-          </button>
-        ))}
-      </div>
-
-      {/* Contact */}
-      <section className="space-y-3 rounded-2xl border border-border bg-card p-6">
-        <div className="space-y-2">
-          <label className="block text-sm font-medium">Email</label>
-          <Input
-            type="email"
-            placeholder="you@email.com"
-            value={props.email}
-            onChange={(e) => props.setEmail(e.target.value)}
-            onBlur={() => emailOk && checkout.updateEmail(props.email).catch(() => {})}
-          />
-        </div>
-        <div className="space-y-2">
-          <label className="block text-sm font-medium">Phone</label>
-          <Input
-            type="tel"
-            inputMode="tel"
-            autoComplete="tel"
-            placeholder="(555) 123-4567"
-            value={props.phone}
-            onChange={(e) => props.setPhone(e.target.value)}
-            onBlur={() => phoneOk && checkout.updatePhoneNumber(props.phone).catch(() => {})}
-          />
-          <p className="text-xs text-muted-foreground">
-            {props.pickup
-              ? "So we can reach you when your order is ready."
-              : "Required by the carrier for delivery updates."}
-          </p>
-        </div>
-        <div className="space-y-2">
-          <label className="block text-sm font-medium">Promo code</label>
-          <div className="flex gap-2">
-            <Input
-              placeholder="WELCOME10"
-              value={props.promo}
-              onChange={(e) => props.setPromo(e.target.value.toUpperCase())}
-            />
-            <Button
-              type="button"
-              variant="outline"
-              disabled={props.reloading || !props.promo}
-              onClick={props.onApplyPromo}
-            >
-              Apply
-            </Button>
-          </div>
-        </div>
-      </section>
 
       {/* Address or pickup notice */}
       {props.pickup ? (
@@ -385,25 +343,26 @@ function CheckoutInner(props: {
         </div>
       </section>
 
-      {/* Payment */}
+      {/* Payment (wallets hidden here — they're in the express button above) */}
       <section className="rounded-2xl border border-border bg-card p-6">
         <h2 className="mb-4 font-display text-lg font-semibold">Payment</h2>
-        <PaymentElement onChange={(e) => setPaymentComplete(e.complete)} />
+        <PaymentElement
+          options={{ wallets: { applePay: "never", googlePay: "never" } }}
+          onChange={(e) => setPaymentComplete(e.complete)}
+        />
       </section>
 
       {/* Total + Pay */}
       <div className="rounded-2xl border border-border bg-card p-6">
         <div className="mb-4 flex items-center justify-between text-base">
           <span className="font-semibold">Total</span>
-          <span className="font-semibold">{totalLabel || formatMoney(props.subtotalCents)}</span>
+          <span className="font-semibold">{totalLabel}</span>
         </div>
         {payError && <p className="mb-3 text-sm text-destructive">{payError}</p>}
         <Button className="w-full" size="lg" onClick={pay} disabled={!canPay}>
           {paying ? "Processing…" : `Pay ${totalLabel}`.trim()}
         </Button>
-        <p className="mt-3 text-center text-xs text-muted-foreground">
-          Secure checkout powered by Stripe.
-        </p>
+        <p className="mt-3 text-center text-xs text-muted-foreground">Secure checkout powered by Stripe.</p>
       </div>
     </div>
   );
