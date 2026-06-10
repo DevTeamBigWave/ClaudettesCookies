@@ -7,6 +7,7 @@ import {
   useCheckoutElements,
   PaymentElement,
   ShippingAddressElement,
+  ExpressCheckoutElement,
 } from "@stripe/react-stripe-js/checkout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -181,6 +182,7 @@ function PaymentArea({ orderNumber }: { orderNumber: number | null }) {
   const [payError, setPayError] = useState<string | null>(null);
   const [addressComplete, setAddressComplete] = useState(false);
   const [paymentComplete, setPaymentComplete] = useState(false);
+  const [expressReady, setExpressReady] = useState(false);
 
   if (result.type === "loading") {
     return <p className="text-sm text-muted-foreground">Loading secure checkout…</p>;
@@ -219,8 +221,34 @@ function PaymentArea({ orderNumber }: { orderNumber: number | null }) {
     }
   }
 
+  const returnUrl = `${window.location.origin}/checkout/success?order=${orderNumber ?? ""}`;
+
   return (
     <div className="space-y-6">
+      {/* One-tap express checkout (Apple Pay / Google Pay / Link). Renders only
+          when a wallet is available; fills the address + pays in one tap. The
+          manual flow below is the fallback. */}
+      <div>
+        <ExpressCheckoutElement
+          onReady={(e) => setExpressReady(Boolean(e.availablePaymentMethods))}
+          onConfirm={async (event) => {
+            setPayError(null);
+            try {
+              const res = await co.confirm({ expressCheckoutConfirmEvent: event, returnUrl });
+              if (res.type === "error") setPayError(res.error.message);
+            } catch (err) {
+              setPayError(err instanceof Error ? err.message : "Payment could not be completed.");
+            }
+          }}
+        />
+        {expressReady && (
+          <div className="my-5 flex items-center gap-3 text-xs uppercase tracking-wide text-muted-foreground">
+            <span className="h-px flex-1 bg-border" /> or pay another way{" "}
+            <span className="h-px flex-1 bg-border" />
+          </div>
+        )}
+      </div>
+
       <section className="rounded-2xl border border-border bg-card p-6">
         <h2 className="mb-4 font-display text-lg font-semibold">Shipping address</h2>
         <ShippingAddressElement
