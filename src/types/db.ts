@@ -66,6 +66,7 @@ export interface Order {
   email: string;
   status: OrderStatus;
   fulfillment: FulfillmentStatus;
+  fulfillment_type: "ship" | "pickup";
   currency: string;
   subtotal_cents: number;
   discount_cents: number;

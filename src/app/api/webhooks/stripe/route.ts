@@ -102,7 +102,8 @@ async function fulfillOrder(
     shipping_carrier: rateObj?.metadata?.carrier ?? null,
   };
   if (full.amount_total != null) reconciliation.total_cents = full.amount_total;
-  if (shipTo.address) {
+  // Store the contact even for pickup (no address) so we keep the phone/name.
+  if (shipTo.address || shipTo.phone) {
     reconciliation.shipping_address = shipTo as unknown as Record<string, unknown>;
   }
   await db.from("orders").update(reconciliation).eq("id", orderId);
@@ -116,9 +117,10 @@ async function fulfillOrder(
 
   const { data: order } = await db
     .from("orders")
-    .select("order_number, email, subtotal_cents, discount_cents, shipping_cents, total_cents")
+    .select("order_number, email, fulfillment_type, subtotal_cents, discount_cents, shipping_cents, total_cents")
     .eq("id", orderId)
     .single();
+  const isPickup = order?.fulfillment_type === "pickup";
   const { data: items } = await db
     .from("order_items")
     .select("title, variant_title, quantity, total_cents")
@@ -140,6 +142,7 @@ async function fulfillOrder(
         discountCents: order.discount_cents,
         shippingCents: order.shipping_cents,
         totalCents: order.total_cents,
+        pickup: isPickup,
         siteUrl: env.NEXT_PUBLIC_SITE_URL,
       }),
     }).catch((e) => console.error("Receipt email failed:", e));
@@ -166,6 +169,7 @@ async function fulfillOrder(
         totalCents: order.total_cents,
         shippingMethod: rateObj?.display_name ?? null,
         address: shipTo.address,
+        pickup: isPickup,
         siteUrl: env.NEXT_PUBLIC_SITE_URL,
       }),
     }).catch((e) => console.error("Store notification email failed:", e));

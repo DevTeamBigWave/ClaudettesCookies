@@ -364,6 +364,18 @@ export async function issueGiftCard(input: {
   return { code };
 }
 
+/** Mark a local-pickup order as collected (fulfilled). No label/tracking. */
+export async function markOrderPickedUp(orderId: string) {
+  await requireAdmin();
+  const db = createAdminClient();
+  await db
+    .from("orders")
+    .update({ fulfillment: "fulfilled", shipped_at: new Date().toISOString() })
+    .eq("id", orderId);
+  revalidatePath(`/admin/orders/${orderId}`);
+  revalidatePath("/admin/orders");
+}
+
 /** Undo fulfillment (e.g. shipped by mistake). Clears ship + delivery state. */
 export async function markOrderUnfulfilled(orderId: string) {
   await requireAdmin();

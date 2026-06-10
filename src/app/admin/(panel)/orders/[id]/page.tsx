@@ -31,6 +31,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
     .select("title, variant_title, quantity, total_cents")
     .eq("order_id", id);
 
+  const isPickup = order.fulfillment_type === "pickup";
   const ship = order.shipping_address as ShippingAddress;
   const addr = ship?.address;
   const hasAddress = Boolean(addr?.line1 && addr.city && addr.state && addr.postal_code);
@@ -111,8 +112,14 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
         {/* Shipping + label */}
         <div className="space-y-6">
           <div className="rounded-2xl border border-border bg-card p-6">
-            <h2 className="mb-3 font-display text-lg font-semibold">Shipping address</h2>
-            {hasAddress ? (
+            <h2 className="mb-3 font-display text-lg font-semibold">
+              {isPickup ? "Pickup" : "Shipping address"}
+            </h2>
+            {isPickup ? (
+              <p className="text-sm text-muted-foreground">
+                🏠 Local pickup{ship?.phone ? ` · ${ship.phone}` : ""}
+              </p>
+            ) : hasAddress ? (
               <address className="text-sm not-italic leading-relaxed text-muted-foreground">
                 {ship?.name && <span className="block font-medium text-foreground">{ship.name}</span>}
                 {addr?.line1}
@@ -136,6 +143,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
             <FulfillmentActions
               orderId={order.id}
               fulfillment={order.fulfillment}
+              pickup={isPickup}
               trackingNumber={order.tracking_number}
               carrier={order.shipping_carrier}
               shippedAt={order.shipped_at}
@@ -144,21 +152,23 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
             />
           </div>
 
-          <div className="rounded-2xl border border-border bg-card p-6">
-            <h2 className="mb-1 font-display text-lg font-semibold">Shipping label</h2>
-            <p className="mb-4 text-sm text-muted-foreground">
-              {order.shipping_carrier ?? "FedEx"}
-              {order.shipping_service ? ` · ${order.shipping_service}` : ""}
-              {order.label_generated_at ? ` · printed ${formatDate(order.label_generated_at)}` : ""}
-            </p>
-            <LabelActions
-              orderId={order.id}
-              hasLabel={Boolean(order.label_path)}
-              trackingNumber={order.tracking_number}
-              canGenerate={canGenerate}
-              reason={reason}
-            />
-          </div>
+          {!isPickup && (
+            <div className="rounded-2xl border border-border bg-card p-6">
+              <h2 className="mb-1 font-display text-lg font-semibold">Shipping label</h2>
+              <p className="mb-4 text-sm text-muted-foreground">
+                {order.shipping_carrier ?? "FedEx"}
+                {order.shipping_service ? ` · ${order.shipping_service}` : ""}
+                {order.label_generated_at ? ` · printed ${formatDate(order.label_generated_at)}` : ""}
+              </p>
+              <LabelActions
+                orderId={order.id}
+                hasLabel={Boolean(order.label_path)}
+                trackingNumber={order.tracking_number}
+                canGenerate={canGenerate}
+                reason={reason}
+              />
+            </div>
+          )}
         </div>
       </div>
     </>

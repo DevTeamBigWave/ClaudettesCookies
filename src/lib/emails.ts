@@ -1,4 +1,5 @@
 import { formatMoney, boxContentsLines } from "@/lib/utils";
+import { PICKUP } from "@/lib/pickup";
 
 /**
  * Brand palette + type for all transactional emails. Mirrors the storefront's
@@ -91,6 +92,7 @@ export function orderReceiptEmail(opts: {
   discountCents: number;
   shippingCents: number;
   totalCents: number;
+  pickup?: boolean;
   siteUrl: string;
 }) {
   const rows = opts.items
@@ -106,9 +108,13 @@ export function orderReceiptEmail(opts: {
     `<tr><td style="padding:4px 0;${bold ? "font-weight:700;" : `color:${COLORS.muted};`}">${l}</td>
      <td align="right" style="padding:4px 0;${bold ? "font-weight:700;" : ""}">${formatMoney(v)}</td></tr>`;
 
+  const subhead = opts.pickup
+    ? `The oven&rsquo;s on. ${PICKUP.instructions}`
+    : "The oven&rsquo;s on. We&rsquo;ll email tracking when it ships.";
+
   return emailShell(
     `<h1 style="font-family:${SERIF};color:${COLORS.ink};font-size:24px;margin:0 0 4px;">Order #${opts.orderNumber} confirmed</h1>
-     <p style="color:${COLORS.muted};margin:0 0 20px;">The oven&rsquo;s on. We&rsquo;ll email tracking when it ships.</p>
+     <p style="color:${COLORS.muted};margin:0 0 20px;">${subhead}</p>
      <table role="presentation" width="100%" style="font-size:14px;border-top:1px solid ${COLORS.divider};border-bottom:1px solid ${COLORS.divider};padding:8px 0;">
        ${rows}
      </table>
@@ -147,6 +153,7 @@ export function newOrderEmail(opts: {
     postal_code?: string | null;
     country?: string | null;
   } | null;
+  pickup?: boolean;
   siteUrl: string;
 }) {
   const rows = opts.items
@@ -163,7 +170,9 @@ export function newOrderEmail(opts: {
      <td align="right" style="padding:4px 0;${bold ? "font-weight:700;" : ""}">${formatMoney(v)}</td></tr>`;
 
   const a = opts.address;
-  const addressHtml = a
+  const addressHtml = opts.pickup
+    ? `<strong style="color:${COLORS.ink};">🏠 ${PICKUP.label}</strong><br>${PICKUP.address}${opts.phone ? `<br>${opts.phone}` : ""}`
+    : a
     ? `${opts.customerName ? `<strong style="color:${COLORS.ink};">${opts.customerName}</strong><br>` : ""}` +
       `${a.line1 ?? ""}${a.line2 ? `, ${a.line2}` : ""}<br>` +
       `${a.city ?? ""}, ${a.state ?? ""} ${a.postal_code ?? ""}<br>${a.country ?? ""}` +
@@ -182,7 +191,7 @@ export function newOrderEmail(opts: {
        ${line("Shipping", opts.shippingCents)}
        ${line("Total", opts.totalCents, true)}
      </table>
-     <h2 style="font-family:${SERIF};color:${COLORS.ink};font-size:16px;margin:24px 0 6px;">Ship to</h2>
+     <h2 style="font-family:${SERIF};color:${COLORS.ink};font-size:16px;margin:24px 0 6px;">${opts.pickup ? "Pickup" : "Ship to"}</h2>
      <p style="color:${COLORS.ink};margin:0 0 4px;line-height:1.6;">${addressHtml}</p>
      <p style="color:${COLORS.muted};margin:0;font-size:13px;">Customer: ${opts.customerEmail}</p>
      <p style="margin:24px 0 0;">${btn(`${opts.siteUrl}/admin/orders`, "Open in admin")}</p>`,

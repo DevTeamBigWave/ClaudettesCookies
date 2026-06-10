@@ -12,6 +12,7 @@ import {
   type PricedLine,
 } from "@/lib/pricing";
 import { BUILD_YOUR_OWN_HANDLE, BOX_SIZE } from "@/lib/data/products";
+import { PICKUP } from "@/lib/pickup";
 import type { Discount } from "@/types/db";
 
 export const runtime = "nodejs";
@@ -29,6 +30,8 @@ const Body = z.object({
   // Required for shipping carriers (FedEx rejects shipments without a recipient
   // phone). Kept loose on format; we just need ~10 digits.
   phone: z.string().trim().min(7).max(40),
+  // When true, local pickup: no shipping address, no carrier, free.
+  pickup: z.boolean().optional(),
   discountCode: z.string().trim().min(1).max(40).optional(),
   items: z
     .array(
@@ -49,7 +52,7 @@ export async function POST(req: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
-  const { email, phone, items, discountCode } = parsed.data;
+  const { email, phone, items, discountCode, pickup } = parsed.data;
   const db = createAdminClient();
 
   // 1) Load variants from the DB and re-price every line server-side.
@@ -179,6 +182,7 @@ export async function POST(req: Request) {
       customer_id: customer?.id ?? null,
       email,
       status: "pending",
+      fulfillment_type: pickup ? "pickup" : "ship",
       subtotal_cents: cart.subtotalCents,
       discount_cents: cart.discountCents,
       shipping_cents: cart.shippingCents,
@@ -221,12 +225,24 @@ export async function POST(req: Request) {
     },
   }));
 
+  // Local pickup: a single $0 "Local pickup" option and no shipping address.
+  const pickupOption: Stripe.Checkout.SessionCreateParams.ShippingOption = {
+    shipping_rate_data: {
+      type: "fixed_amount",
+      fixed_amount: { amount: 0, currency: "usd" },
+      display_name: PICKUP.label,
+      metadata: { tier: "Pickup", service_type: "PICKUP", carrier: "Pickup" },
+    },
+  };
+
   // Fixed shipping tiers set at session creation. Flat for now (FedEx isn't live
   // to quote per-address rates); free orders get a single $0 tier. Because these
   // are set up front, we don't use server-only dynamic shipping — which keeps
   // checkout simple and lets confirm() run with the address element mounted.
   // (When FedEx production is enabled, switch back to address-driven rates.)
-  const shippingOptions: Stripe.Checkout.SessionCreateParams.ShippingOption[] = freeShipping
+  const shippingOptions: Stripe.Checkout.SessionCreateParams.ShippingOption[] = pickup
+    ? [pickupOption]
+    : freeShipping
     ? [
         {
           shipping_rate_data: {
@@ -263,7 +279,8 @@ export async function POST(req: Request) {
       ui_mode: "custom",
       customer_email: email,
       line_items: lineItems,
-      shipping_address_collection: { allowed_countries: ["US"] },
+      // No shipping address for pickup orders.
+      shipping_address_collection: pickup ? undefined : { allowed_countries: ["US"] },
       shipping_options: shippingOptions,
       // Apply discount as a Stripe coupon so the displayed total matches our math.
       discounts:

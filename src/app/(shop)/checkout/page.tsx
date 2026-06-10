@@ -20,6 +20,7 @@ export default function CheckoutPage() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
+  const [pickup, setPickup] = useState(false);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [orderNumber, setOrderNumber] = useState<number | null>(null);
   const [creating, setCreating] = useState(false);
@@ -50,6 +51,7 @@ export default function CheckoutPage() {
         body: JSON.stringify({
           email,
           phone,
+          pickup,
           discountCode: code || undefined,
           items: lines.map((l) => ({
             variantId: l.variantId,
@@ -119,6 +121,27 @@ export default function CheckoutPage() {
             <span className="text-muted-foreground">Subtotal</span>
             <span className="font-medium">{formatMoney(subtotalCents())}</span>
           </div>
+
+          {/* Ship vs local pickup */}
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { v: false, label: "Ship it", hint: "FedEx to your door" },
+              { v: true, label: "Pick up", hint: "Free · in person" },
+            ].map((opt) => (
+              <button
+                key={opt.label}
+                type="button"
+                onClick={() => setPickup(opt.v)}
+                className={`rounded-xl border p-3 text-left transition-colors ${
+                  pickup === opt.v ? "border-primary bg-secondary" : "border-border"
+                }`}
+              >
+                <span className="block text-sm font-semibold">{opt.label}</span>
+                <span className="block text-xs text-muted-foreground">{opt.hint}</span>
+              </button>
+            ))}
+          </div>
+
           <div className="space-y-2">
             <label className="block text-sm font-medium">Email</label>
             <Input
@@ -139,7 +162,9 @@ export default function CheckoutPage() {
               onChange={(e) => setPhone(e.target.value)}
             />
             <p className="text-xs text-muted-foreground">
-              Required by the carrier for delivery updates.
+              {pickup
+                ? "So we can reach you when your order is ready."
+                : "Required by the carrier for delivery updates."}
             </p>
           </div>
           <div className="space-y-2">
@@ -155,7 +180,9 @@ export default function CheckoutPage() {
             {creating ? "Starting…" : "Continue to payment"}
           </Button>
           <p className="text-center text-xs text-muted-foreground">
-            Shipping is calculated from your address on the next step.
+            {pickup
+              ? "No shipping — you'll pick up your order locally."
+              : "Shipping is calculated from your address on the next step."}
           </p>
         </div>
       ) : (
@@ -166,7 +193,7 @@ export default function CheckoutPage() {
             elementsOptions: { appearance: { theme: "stripe", variables: { borderRadius: "12px" } } },
           }}
         >
-          <PaymentArea orderNumber={orderNumber} />
+          <PaymentArea orderNumber={orderNumber} pickup={pickup} />
         </CheckoutElementsProvider>
       )}
     </div>
@@ -176,7 +203,7 @@ export default function CheckoutPage() {
 /** Address + shipping tier + payment, all in the embedded Checkout SDK. Shipping
  *  options are fixed (set when the session was created), so there's no dynamic
  *  re-quote and the address element can stay mounted through confirm(). */
-function PaymentArea({ orderNumber }: { orderNumber: number | null }) {
+function PaymentArea({ orderNumber, pickup }: { orderNumber: number | null; pickup: boolean }) {
   const result = useCheckoutElements();
   const [paying, setPaying] = useState(false);
   const [payError, setPayError] = useState<string | null>(null);
@@ -194,8 +221,9 @@ function PaymentArea({ orderNumber }: { orderNumber: number | null }) {
   const co = result.checkout;
   const totalLabel = co.total?.total?.amount ?? "";
   const selectedId = co.shipping?.shippingOption?.id ?? null;
+  // Pickup orders collect no address, so address completeness isn't required.
   const canPay =
-    addressComplete &&
+    (pickup || addressComplete) &&
     paymentComplete &&
     co.shippingOptions.length > 0 &&
     selectedId !== null &&
@@ -221,7 +249,7 @@ function PaymentArea({ orderNumber }: { orderNumber: number | null }) {
     }
   }
 
-  const returnUrl = `${window.location.origin}/checkout/success?order=${orderNumber ?? ""}`;
+  const returnUrl = `${window.location.origin}/checkout/success?order=${orderNumber ?? ""}${pickup ? "&pickup=1" : ""}`;
 
   return (
     <div className="space-y-6">
@@ -249,15 +277,24 @@ function PaymentArea({ orderNumber }: { orderNumber: number | null }) {
         )}
       </div>
 
-      <section className="rounded-2xl border border-border bg-card p-6">
-        <h2 className="mb-4 font-display text-lg font-semibold">Shipping address</h2>
-        <ShippingAddressElement
-          options={{ display: { name: "full" } }}
-          onChange={(e) => setAddressComplete(e.complete)}
-        />
-      </section>
+      {pickup ? (
+        <section className="rounded-2xl border border-border bg-card p-6">
+          <h2 className="mb-2 font-display text-lg font-semibold">Local pickup</h2>
+          <p className="text-sm text-muted-foreground">
+            No shipping — we&rsquo;ll email you when your order is baked and ready to pick up.
+          </p>
+        </section>
+      ) : (
+        <section className="rounded-2xl border border-border bg-card p-6">
+          <h2 className="mb-4 font-display text-lg font-semibold">Shipping address</h2>
+          <ShippingAddressElement
+            options={{ display: { name: "full" } }}
+            onChange={(e) => setAddressComplete(e.complete)}
+          />
+        </section>
+      )}
 
-      <section className="rounded-2xl border border-border bg-card p-6">
+      <section className={`rounded-2xl border border-border bg-card p-6 ${pickup ? "hidden" : ""}`}>
         <h2 className="mb-4 font-display text-lg font-semibold">Shipping method</h2>
         <div className="space-y-2">
           {co.shippingOptions.map((opt) => (

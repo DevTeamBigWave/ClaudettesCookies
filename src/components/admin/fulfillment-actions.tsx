@@ -8,6 +8,7 @@ import { FormError } from "@/components/admin/ui";
 import {
   markOrderShipped,
   markOrderUnfulfilled,
+  markOrderPickedUp,
   refreshDeliveryStatus,
 } from "@/app/admin/(panel)/actions";
 import { trackingUrl, CARRIERS } from "@/lib/tracking";
@@ -21,6 +22,7 @@ import { formatDate } from "@/lib/utils";
 export function FulfillmentActions(props: {
   orderId: string;
   fulfillment: string;
+  pickup?: boolean;
   trackingNumber: string | null;
   carrier: string | null;
   shippedAt: string | null;
@@ -30,6 +32,39 @@ export function FulfillmentActions(props: {
   const [pending, startTransition] = useTransition();
   const [msg, setMsg] = useState<string | null>(null);
   const shipped = props.fulfillment === "fulfilled";
+
+  // Local pickup: no tracking/label/delivery — just collected or not.
+  if (props.pickup) {
+    if (!shipped) {
+      return (
+        <div className="space-y-2">
+          <Button
+            disabled={pending}
+            onClick={() => startTransition(() => markOrderPickedUp(props.orderId))}
+          >
+            <CheckCircle2 className="size-4" /> Mark as picked up
+          </Button>
+          <p className="text-xs text-muted-foreground">Local pickup — no label or tracking.</p>
+        </div>
+      );
+    }
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center gap-2 text-sm">
+          <CheckCircle2 className="size-4 shrink-0 text-green-600" />
+          <span>Picked up{props.shippedAt ? ` ${formatDate(props.shippedAt)}` : ""}</span>
+        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          disabled={pending}
+          onClick={() => startTransition(() => markOrderUnfulfilled(props.orderId))}
+        >
+          <Undo2 className="size-4" /> Mark not picked up
+        </Button>
+      </div>
+    );
+  }
 
   if (!shipped) {
     return (

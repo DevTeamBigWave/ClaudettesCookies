@@ -8,9 +8,10 @@ export const metadata = { title: "Order confirmed" };
 export default async function SuccessPage({
   searchParams,
 }: {
-  searchParams: Promise<{ order?: string }>;
+  searchParams: Promise<{ order?: string; pickup?: string }>;
 }) {
-  const { order } = await searchParams;
+  const { order, pickup } = await searchParams;
+  const isPickup = pickup === "1";
 
   return (
     <div className="container flex flex-col items-center py-24 text-center">
@@ -19,8 +20,10 @@ export default async function SuccessPage({
       <h1 className="mt-6 font-display text-4xl font-semibold">Thank you!</h1>
       <p className="mt-3 max-w-md text-muted-foreground">
         Your order is in and the oven&rsquo;s on. We&rsquo;ve emailed your receipt
-        {order ? <> for order <span className="font-semibold">#{order}</span></> : null}. You&rsquo;ll
-        get tracking the moment it ships.
+        {order ? <> for order <span className="font-semibold">#{order}</span></> : null}.{" "}
+        {isPickup
+          ? "We'll email you the moment it's baked and ready to pick up."
+          : "You'll get tracking the moment it ships."}
       </p>
       <Button asChild className="mt-8">
         <Link href="/shop">Keep shopping</Link>
