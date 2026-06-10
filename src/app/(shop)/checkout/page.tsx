@@ -211,9 +211,13 @@ function CheckoutInner(props: {
   const selectedId = checkout.shipping?.shippingOption?.id ?? null;
   const emailOk = /\S+@\S+\.\S+/.test(props.email);
   const phoneOk = props.phone.replace(/\D/g, "").length >= 10;
+  // Contact can come from our fields OR from Link / a wallet (which set it on the
+  // session). Gate on the session's values so Link users don't have to retype.
+  const hasEmail = Boolean(checkout.email) || emailOk;
+  const hasPhone = props.pickup || Boolean(checkout.phoneNumber) || phoneOk; // FedEx needs it only for shipping
   const canPay =
-    emailOk &&
-    phoneOk &&
+    hasEmail &&
+    hasPhone &&
     (props.pickup || addressComplete) &&
     paymentComplete &&
     checkout.shippingOptions.length > 0 &&
