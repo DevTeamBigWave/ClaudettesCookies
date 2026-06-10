@@ -244,31 +244,30 @@ function CheckoutInner(props: {
 
   return (
     <div className="space-y-6">
-      {/* One-tap express checkout (Apple Pay / Google Pay / Link). Fills contact +
-          address + pays in one tap. Hidden for pickup (no address) and when no
+      {/* One-tap express checkout (Apple Pay / Google Pay / Link). Fills contact
+          (+ address for shipping) and pays in one tap. Shows for pickup too —
+          the session just won't ask for a shipping address. Hidden only when no
           wallet is available. */}
-      {!props.pickup && (
-        <div>
-          <ExpressCheckoutElement
-            onReady={(e) => setExpressReady(Boolean(e.availablePaymentMethods))}
-            onConfirm={async (event) => {
-              setPayError(null);
-              try {
-                const res = await checkout.confirm({ expressCheckoutConfirmEvent: event, returnUrl });
-                if (res.type === "error") setPayError(res.error.message);
-              } catch (err) {
-                setPayError(err instanceof Error ? err.message : "Payment could not be completed.");
-              }
-            }}
-          />
-          {expressReady && (
-            <div className="my-5 flex items-center gap-3 text-xs uppercase tracking-wide text-muted-foreground">
-              <span className="h-px flex-1 bg-border" /> or check out below{" "}
-              <span className="h-px flex-1 bg-border" />
-            </div>
-          )}
-        </div>
-      )}
+      <div>
+        <ExpressCheckoutElement
+          onReady={(e) => setExpressReady(Boolean(e.availablePaymentMethods))}
+          onConfirm={async (event) => {
+            setPayError(null);
+            try {
+              const res = await checkout.confirm({ expressCheckoutConfirmEvent: event, returnUrl });
+              if (res.type === "error") setPayError(res.error.message);
+            } catch (err) {
+              setPayError(err instanceof Error ? err.message : "Payment could not be completed.");
+            }
+          }}
+        />
+        {expressReady && (
+          <div className="my-5 flex items-center gap-3 text-xs uppercase tracking-wide text-muted-foreground">
+            <span className="h-px flex-1 bg-border" /> or check out below{" "}
+            <span className="h-px flex-1 bg-border" />
+          </div>
+        )}
+      </div>
 
       {/* Ship vs pickup */}
       <div className="grid grid-cols-2 gap-2">
