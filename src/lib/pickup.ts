@@ -8,6 +8,5 @@ export const PICKUP = {
   /** Street address customers pick up from. */
   address: "Rockaway Park, NY",
   /** When/how pickup works — keep it short. */
-  instructions:
-    "We'll email you when your order is baked and ready. Pickup is in Rockaway Park — details to follow.",
+  instructions: "We'll contact you within 4 hours with pickup details.",
 } as const;

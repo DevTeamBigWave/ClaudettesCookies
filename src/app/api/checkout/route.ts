@@ -185,7 +185,6 @@ export async function POST(req: Request) {
       customer_id: customer?.id ?? null,
       email: orderEmail,
       status: "pending",
-      fulfillment_type: pickup ? "pickup" : "ship",
       subtotal_cents: cart.subtotalCents,
       discount_cents: cart.discountCents,
       shipping_cents: cart.shippingCents,
@@ -199,6 +198,16 @@ export async function POST(req: Request) {
 
   if (orderErr || !order) {
     return NextResponse.json({ error: "Could not create order" }, { status: 500 });
+  }
+
+  // Flag pickup with a separate, tolerant update so a not-yet-migrated
+  // fulfillment_type column can't break order creation (ship is the DB default).
+  if (pickup) {
+    const { error: pickupErr } = await db
+      .from("orders")
+      .update({ fulfillment_type: "pickup" })
+      .eq("id", order.id);
+    if (pickupErr) console.error("Could not set fulfillment_type (run migration 0013):", pickupErr.message);
   }
 
   await db.from("order_items").insert(

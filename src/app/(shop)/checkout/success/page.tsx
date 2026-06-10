@@ -22,7 +22,7 @@ export default async function SuccessPage({
         Your order is in and the oven&rsquo;s on. We&rsquo;ve emailed your receipt
         {order ? <> for order <span className="font-semibold">#{order}</span></> : null}.{" "}
         {isPickup
-          ? "We'll email you the moment it's baked and ready to pick up."
+          ? "We'll contact you within 4 hours with pickup details."
           : "You'll get tracking the moment it ships."}
       </p>
       <Button asChild className="mt-8">

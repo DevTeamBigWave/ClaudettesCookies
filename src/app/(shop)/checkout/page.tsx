@@ -345,7 +345,7 @@ function CheckoutInner(props: {
         <section className="rounded-2xl border border-border bg-card p-6">
           <h2 className="mb-2 font-display text-lg font-semibold">Local pickup</h2>
           <p className="text-sm text-muted-foreground">
-            No shipping — we&rsquo;ll email you when your order is baked and ready to pick up.
+            No shipping — we&rsquo;ll contact you within 4 hours with pickup details.
           </p>
         </section>
       ) : (
