@@ -50,8 +50,8 @@ Moroccan-inspired; the ethos is healthy eats with no compromise. Tagline:
 
 == LOCAL PICKUP ==
 Yes — local pickup IS available. At checkout, choose "Pick up" instead of "Ship
-it" (it's free, no shipping address needed). Pickup is in Rockaway Park (Queens,
-NYC). ${PICKUP.instructions}
+it" (it's free, no shipping address needed). Pickup is at ${PICKUP.address}.
+${PICKUP.instructions}
 
 == GLUTEN-FREE ==
 Two flavors are naturally gluten-free (no wheat flour): the Disco Drop (oats,

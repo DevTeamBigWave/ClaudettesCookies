@@ -6,7 +6,7 @@ export const PICKUP = {
   /** Shown as the shipping method on the order. */
   label: "Local pickup",
   /** Street address customers pick up from. */
-  address: "Rockaway Park, NY",
+  address: "108-16 Rockaway Beach Blvd, Rockaway Park, NY",
   /** When/how pickup works — keep it short. */
   instructions: "We'll contact you within 4 hours with pickup details.",
 } as const;
