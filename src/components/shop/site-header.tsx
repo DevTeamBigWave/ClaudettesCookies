@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Menu, X } from "lucide-react";
 import { useCart } from "@/store/cart";
 import { cn } from "@/lib/utils";
@@ -44,10 +44,36 @@ export function SiteHeader() {
   const count = useCart((s) => s.count());
   const [mounted, setMounted] = useState(false);
   const [open, setOpen] = useState(false);
+  const headerRef = useRef<HTMLElement>(null);
   useEffect(() => setMounted(true), []);
 
+  // Close the mobile menu on any tap/click outside the header, or on Escape.
+  // (A fixed overlay backdrop fails here because the header's backdrop-blur
+  // makes it the containing block for fixed children — so it can't cover the
+  // page below the menu.)
+  useEffect(() => {
+    if (!open) return;
+    function onPointerDown(e: PointerEvent) {
+      if (headerRef.current && !headerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
   return (
-    <header className="sticky top-0 z-50 border-b border-border/70 bg-background/85 backdrop-blur">
+    <header
+      ref={headerRef}
+      className="sticky top-0 z-50 border-b border-border/70 bg-background/85 backdrop-blur"
+    >
       <div className="container flex h-20 items-center justify-between gap-4">
         <button
           className="md:hidden"
@@ -97,16 +123,7 @@ export function SiteHeader() {
         </Link>
       </div>
 
-      {/* Click-away backdrop — tapping below the menu folds it back up. */}
-      {open && (
-        <div
-          className="fixed inset-0 top-20 z-40 bg-black/20 md:hidden"
-          aria-hidden="true"
-          onClick={() => setOpen(false)}
-        />
-      )}
-
-      {/* Mobile menu */}
+      {/* Mobile menu (closes via the click-outside listener above) */}
       <div className={cn("relative z-50 border-t border-border bg-background md:hidden", open ? "block" : "hidden")}>
         <nav className="container flex flex-col py-3">
           {NAV.map((item) => (
