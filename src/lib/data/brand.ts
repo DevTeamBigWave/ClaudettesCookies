@@ -1,4 +1,9 @@
-import { FLAT_SHIPPING_CENTS, FREE_SHIPPING_THRESHOLD_CENTS } from "@/lib/pricing";
+import {
+  FLAT_SHIPPING_CENTS,
+  FLAT_EXPRESS_SHIPPING_CENTS,
+  FREE_SHIPPING_THRESHOLD_CENTS,
+} from "@/lib/pricing";
+import { PICKUP } from "@/lib/pickup";
 
 /** Whole-dollar when even, else 2dp (e.g. 700 → "$7", 4500 → "$45"). */
 const dollars = (cents: number) => `$${(cents / 100).toFixed(cents % 100 ? 2 : 0)}`;
@@ -33,14 +38,20 @@ Moroccan-inspired; the ethos is healthy eats with no compromise. Tagline:
 == BOXES, SIZE & PRICING ==
 - Every box is 6 cookies for $45 — a single flavor, the Intro sampler (all four
   signature flavors), or a Build Your Own mix.
-- Baked to order and shipped fresh anywhere in the US via FedEx — never sitting
-  on a shelf.
-- Enter your ZIP in the cart to see live FedEx rates and delivery estimates
-  (e.g. Ground vs. 2-Day) and pick the speed you want. If live rates are ever
-  unavailable, a flat ${dollars(FLAT_SHIPPING_CENTS)} standard rate applies.
+- Baked to order and shipped fresh anywhere in the US via FedEx — or pick up
+  locally (see below). Never sitting on a shelf.
+- At checkout, choose your shipping speed — Regular (${dollars(FLAT_SHIPPING_CENTS)})
+  or Express (${dollars(FLAT_EXPRESS_SHIPPING_CENTS)}) — or select Local pickup (free).
 - Shipping is FREE on orders over ${dollars(FREE_SHIPPING_THRESHOLD_CENTS)}.
+- You can pay with card, Apple Pay, Google Pay, or Link (one-tap at the top of
+  checkout).
 - For exact box names and prices, trust the live catalog above; if anything here
   conflicts with it, the catalog wins.
+
+== LOCAL PICKUP ==
+Yes — local pickup IS available. At checkout, choose "Pick up" instead of "Ship
+it" (it's free, no shipping address needed). Pickup is in Rockaway Park (Queens,
+NYC). ${PICKUP.instructions}
 
 == GLUTEN-FREE ==
 Two flavors are naturally gluten-free (no wheat flour): the Disco Drop (oats,
