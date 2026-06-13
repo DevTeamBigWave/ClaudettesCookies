@@ -410,6 +410,15 @@ export async function refreshDeliveryStatus(
     revalidatePath(`/admin/orders/${orderId}`);
     return { status: result.status, text: result.statusText };
   } catch (e) {
-    return { error: e instanceof Error ? e.message : "Could not fetch tracking." };
+    const msg = e instanceof Error ? e.message : "Could not fetch tracking.";
+    // The FedEx Track API isn't authorized yet (production access pending), so
+    // keep this calm and point to the Track package link instead of dumping a
+    // scary credentials error.
+    if (/\b40[13]\b|authoriz|credential|forbidden|configured/i.test(msg)) {
+      return {
+        error: "Live FedEx tracking isn't connected yet — use the Track package link to check status.",
+      };
+    }
+    return { error: msg };
   }
 }
