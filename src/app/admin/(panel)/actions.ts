@@ -10,7 +10,7 @@ import { slugify, generateGiftCardCode } from "@/lib/utils";
 import { env } from "@/lib/env";
 import { sendEmail } from "@/lib/resend";
 import { orderShippedEmail, giftCardEmail } from "@/lib/emails";
-import { trackShipment } from "@/lib/fedex";
+import { trackPackage } from "@/lib/labels";
 import { trackingUrl } from "@/lib/tracking";
 import { deleteAbandonedOrders } from "@/lib/cleanup";
 import type { DiscountType, BlogGenerationJob } from "@/types/db";
@@ -396,13 +396,13 @@ export async function refreshDeliveryStatus(
   const db = createAdminClient();
   const { data: order } = await db
     .from("orders")
-    .select("tracking_number")
+    .select("tracking_number, shipping_carrier")
     .eq("id", orderId)
     .single();
   if (!order?.tracking_number) return { error: "No tracking number on this order." };
 
   try {
-    const result = await trackShipment(order.tracking_number);
+    const result = await trackPackage(order.tracking_number, order.shipping_carrier);
     await db
       .from("orders")
       .update({ delivery_status: result.status, delivered_at: result.deliveredAt })

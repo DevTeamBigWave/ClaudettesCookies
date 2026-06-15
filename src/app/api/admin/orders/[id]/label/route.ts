@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getProfile } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createFedExLabel, isFedExShipConfigured } from "@/lib/fedex";
+import { generateLabel, isLabelProviderConfigured } from "@/lib/labels";
 import { packageWeightLb } from "@/lib/shipping";
 
 export const runtime = "nodejs";
@@ -29,9 +29,9 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
   if (!(await requireStaff())) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  if (!isFedExShipConfigured()) {
+  if (!isLabelProviderConfigured()) {
     return NextResponse.json(
-      { error: "FedEx Ship API isn't configured (set the FEDEX_SHIP_FROM_* env vars)." },
+      { error: "No label provider configured (set SHIPPO_API_TOKEN or the FEDEX_* env vars)." },
       { status: 422 },
     );
   }
@@ -65,7 +65,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
 
   let label;
   try {
-    label = await createFedExLabel({
+    label = await generateLabel({
       recipient: {
         name: ship?.name || "Customer",
         phone: ship?.phone,
@@ -100,12 +100,13 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
     .from("orders")
     .update({
       tracking_number: label.trackingNumber,
+      shipping_carrier: label.carrier,
       label_path: path,
       label_generated_at: new Date().toISOString(),
     })
     .eq("id", id);
 
-  return NextResponse.json({ trackingNumber: label.trackingNumber });
+  return NextResponse.json({ trackingNumber: label.trackingNumber, carrier: label.carrier });
 }
 
 /** Hand back a short-lived signed URL to download the stored label PDF. */

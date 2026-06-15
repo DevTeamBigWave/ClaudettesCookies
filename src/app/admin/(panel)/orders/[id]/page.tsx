@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { isFedExShipConfigured } from "@/lib/fedex";
+import { isLabelProviderConfigured } from "@/lib/labels";
 import { PageHeader, StatusPill } from "@/components/admin/ui";
 import { LabelActions } from "@/components/admin/label-actions";
 import { FulfillmentActions } from "@/components/admin/fulfillment-actions";
@@ -35,7 +35,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
   const ship = order.shipping_address as ShippingAddress;
   const addr = ship?.address;
   const hasAddress = Boolean(addr?.line1 && addr.city && addr.state && addr.postal_code);
-  const shipConfigured = isFedExShipConfigured();
+  const shipConfigured = isLabelProviderConfigured();
   const isPaid = order.status === "paid" || order.status === "fulfilled";
 
   const canGenerate = isPaid && shipConfigured && hasAddress;
@@ -44,7 +44,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
     : !hasAddress
       ? "No complete shipping address on this order yet."
       : !shipConfigured
-        ? "Set the FEDEX_SHIP_FROM_* environment variables to enable label printing."
+        ? "Set SHIPPO_API_TOKEN (or the FEDEX_* vars) to enable label printing."
         : undefined;
 
   return (

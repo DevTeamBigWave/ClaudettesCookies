@@ -61,6 +61,13 @@ const serverSchema = z.object({
   FEDEX_SHIP_FROM_CITY: z.string().min(1).optional(),
   FEDEX_SHIP_FROM_STATE: z.string().length(2).optional(),
   FEDEX_SHIP_FROM_ZIP: z.string().min(3).optional(),
+  // Shippo multi-carrier label/tracking. When SHIPPO_API_TOKEN is set, the admin
+  // "Generate label" + delivery tracking use Shippo (which talks to your
+  // connected FedEx/USPS/UPS account) instead of the FedEx Ship API directly —
+  // bypassing FedEx's production-API approval. Reuses the FEDEX_SHIP_FROM_* fields
+  // as the ship-from origin. SHIPPO_CARRIER picks which carrier to prefer.
+  SHIPPO_API_TOKEN: z.string().min(1).optional(),
+  SHIPPO_CARRIER: z.string().min(1).default("FedEx"),
   // Google Calendar order sync (OAuth user credentials — keyless, no service
   // account). Feature-gated: when the client id/secret/refresh token are
   // missing, paid orders simply aren't mirrored to the calendar. The refresh

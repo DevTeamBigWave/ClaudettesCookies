@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isAuthorizedCron } from "@/lib/cron";
-import { trackShipment } from "@/lib/fedex";
+import { trackPackage } from "@/lib/labels";
 import { sendEmail } from "@/lib/resend";
 import { orderShippedEmail } from "@/lib/emails";
 import { trackingUrl } from "@/lib/tracking";
@@ -41,7 +41,7 @@ export async function POST(req: Request) {
 
     let result;
     try {
-      result = await trackShipment(o.tracking_number);
+      result = await trackPackage(o.tracking_number, o.shipping_carrier);
     } catch (e) {
       console.error(`Track failed for order #${o.order_number}:`, e);
       continue;
