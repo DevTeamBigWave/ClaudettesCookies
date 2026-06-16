@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isAuthorizedCron } from "@/lib/cron";
 import { trackPackage } from "@/lib/labels";
-import { sendEmail } from "@/lib/resend";
+import { sendEmail, STORE_EMAIL } from "@/lib/resend";
 import { orderShippedEmail } from "@/lib/emails";
 import { trackingUrl } from "@/lib/tracking";
 import { env } from "@/lib/env";
@@ -63,6 +63,7 @@ export async function POST(req: Request) {
       const url = trackingUrl(carrier, o.tracking_number);
       await sendEmail({
         to: o.email,
+        cc: STORE_EMAIL,
         subject: `Your Claudette's order #${o.order_number} has shipped 🍪`,
         html: orderShippedEmail({
           orderNumber: o.order_number,

@@ -22,6 +22,8 @@ export const resend = new Proxy({} as Resend, {
 
 export const EMAIL_FROM = env.RESEND_FROM_EMAIL;
 export const EMAIL_REPLY_TO = env.RESEND_REPLY_TO;
+/** Store inbox — CC'd on customer order emails for visibility. */
+export const STORE_EMAIL = "hello@claudettescookies.shop";
 
 /** Whether an email provider is configured. When false, sends are skipped. */
 export const emailEnabled = Boolean(env.RESEND_API_KEY && env.RESEND_FROM_EMAIL);
@@ -30,11 +32,12 @@ type SendArgs = {
   to: string | string[];
   subject: string;
   html: string;
+  cc?: string | string[];
   headers?: Record<string, string>;
 };
 
 /** Thin wrapper so callers don't repeat from/reply-to and get uniform errors. */
-export async function sendEmail({ to, subject, html, headers }: SendArgs) {
+export async function sendEmail({ to, subject, html, cc, headers }: SendArgs) {
   if (!emailEnabled) {
     console.warn(`[email] skipped (RESEND_API_KEY/RESEND_FROM_EMAIL not set): "${subject}"`);
     return { skipped: true as const };
@@ -44,6 +47,7 @@ export async function sendEmail({ to, subject, html, headers }: SendArgs) {
     to,
     subject,
     html,
+    cc,
     replyTo: EMAIL_REPLY_TO,
     headers,
   });

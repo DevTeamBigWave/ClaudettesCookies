@@ -46,6 +46,10 @@ Four flavors. Zero compromise. · Baked fresh in NYC${footerExtra}
 const btn = (href: string, label: string) =>
   `<a href="${href}" style="display:inline-block;background:${COLORS.paprika};color:${COLORS.onPaprika};text-decoration:none;font-weight:600;padding:12px 24px;border-radius:999px;">${label}</a>`;
 
+/** A soft brand-voice callout card — real-food / "good energy" ethos. */
+const note = (text: string) =>
+  `<div style="margin:24px 0 0;padding:16px 18px;background:${COLORS.sand};border-radius:12px;font-size:14px;line-height:1.55;color:${COLORS.ink};">${text}</div>`;
+
 /**
  * Inline-style markdown-rendered HTML so headings + links match the brand inside
  * mail clients (which strip `<style>` blocks). Tuned for our `renderMarkdown`
@@ -80,7 +84,9 @@ export function welcomeEmail(siteUrl: string) {
     `<h1 style="font-family:${SERIF};color:${COLORS.ink};font-size:24px;margin:0 0 12px;">Welcome to the family 🍪</h1>
      <p>You&rsquo;re on the list. Here&rsquo;s <strong>10% off</strong> your first box with code <strong>WELCOME10</strong>.</p>
      <p style="margin:24px 0;">${btn(`${siteUrl}/shop`, "Shop the boxes")}</p>
-     <p style="color:${COLORS.muted};">Four flavors, zero compromise — see what the feed&rsquo;s been talking about.</p>`,
+     ${note(
+       `We believe a treat shouldn&rsquo;t cost you your health. Every cookie is grass-fed butter and organic flour &mdash; <strong>no seed oils, no gums, no mystery &ldquo;natural flavors.&rdquo;</strong> Real ingredients your body recognizes, the kind that give you good energy instead of taking it. Cookies before chemistry.`,
+     )}`,
     "Welcome — here's 10% off your first box.",
   );
 }
@@ -124,6 +130,9 @@ export function orderReceiptEmail(opts: {
        ${line("Shipping", opts.shippingCents)}
        ${line("Total", opts.totalCents, true)}
      </table>
+     ${note(
+       `Thank you for choosing the cleaner cookie. Every one in this box is grass-fed butter and organic flour &mdash; <strong>no seed oils, no gums, nothing your body has to forgive.</strong> Dessert that gives you good energy instead of taking it. That&rsquo;s the whole point. 🍪`,
+     )}
      <p style="margin:24px 0 0;">${btn(`${opts.siteUrl}/shop`, "Order more")}</p>`,
     `Order #${opts.orderNumber} confirmed`,
   );
@@ -216,7 +225,10 @@ export function orderShippedEmail(opts: {
     `<h1 style="font-family:${SERIF};color:${COLORS.ink};font-size:24px;margin:0 0 4px;">Your cookies are on the way 🍪</h1>
      <p style="color:${COLORS.muted};margin:0 0 20px;">Order #${opts.orderNumber} just shipped${opts.carrier ? ` via ${opts.carrier}` : ""}.</p>
      ${track}
-     ${cta}`,
+     ${cta}
+     ${note(
+       `Made the way food should be: real butter, organic flour, <strong>zero seed oils.</strong> Enjoy them slowly &mdash; this is the kind of treat that loves you back.`,
+     )}`,
     `Order #${opts.orderNumber} shipped`,
   );
 }

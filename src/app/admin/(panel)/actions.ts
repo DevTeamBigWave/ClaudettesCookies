@@ -8,7 +8,7 @@ import { sendCampaign } from "@/lib/campaigns";
 import { startBackgroundDrop } from "@/lib/blog-generator";
 import { slugify, generateGiftCardCode } from "@/lib/utils";
 import { env } from "@/lib/env";
-import { sendEmail } from "@/lib/resend";
+import { sendEmail, STORE_EMAIL } from "@/lib/resend";
 import { orderShippedEmail, giftCardEmail } from "@/lib/emails";
 import { trackPackage } from "@/lib/labels";
 import { trackingUrl } from "@/lib/tracking";
@@ -278,6 +278,7 @@ export async function markOrderShipped(formData: FormData) {
     const url = tracking ? trackingUrl(carrier, tracking) : null;
     await sendEmail({
       to: order.email,
+      cc: STORE_EMAIL,
       subject: `Your Claudette's order #${order.order_number} has shipped 🍪`,
       html: orderShippedEmail({
         orderNumber: order.order_number,
@@ -349,6 +350,7 @@ export async function issueGiftCard(input: {
   if (recipientEmail) {
     await sendEmail({
       to: recipientEmail,
+      cc: STORE_EMAIL,
       subject: "🎁 You've got a Claudette's gift card",
       html: giftCardEmail({
         code,

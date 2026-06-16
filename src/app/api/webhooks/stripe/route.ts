@@ -3,7 +3,7 @@ import type Stripe from "stripe";
 import { stripe } from "@/lib/stripe";
 import { env } from "@/lib/env";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { sendEmail } from "@/lib/resend";
+import { sendEmail, STORE_EMAIL } from "@/lib/resend";
 import { orderReceiptEmail, giftCardEmail, newOrderEmail } from "@/lib/emails";
 import { createCalendarEvent, deleteCalendarEvent, bakeDayYmd } from "@/lib/google-calendar";
 import { formatMoney, boxContentsLines } from "@/lib/utils";
@@ -143,6 +143,7 @@ async function fulfillOrder(
   if (order) {
     await sendEmail({
       to: order.email,
+      cc: STORE_EMAIL,
       subject: `Your Claudette's order #${order.order_number} is confirmed 🍪`,
       html: orderReceiptEmail({
         orderNumber: order.order_number,
@@ -282,6 +283,7 @@ async function fulfillGiftCard(
   if (card.recipient_email) {
     await sendEmail({
       to: card.recipient_email,
+      cc: STORE_EMAIL,
       subject: `🎁 You've got a Claudette's gift card`,
       html: giftCardEmail({
         code: card.code,
