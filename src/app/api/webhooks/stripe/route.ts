@@ -71,40 +71,41 @@ async function fulfillOrder(
   orderId: string,
   session: Stripe.Checkout.Session,
 ) {
-  // Shipping (and therefore the total) is only finalized inside the embedded
-  // checkout, so reconcile the order's amounts + chosen method from the session
-  // BEFORE finalizing — finalize_paid_order rolls total_cents into customer
-  // lifetime stats. Expand the selected shipping rate to recover its tier label
-  // and FedEx service code (stashed in metadata when we set the options).
+  // The address-first checkout stores shipping (cents/method/carrier/address) on
+  // the order up front, so we mostly reconcile email + total here. Expand the
+  // shipping rate in case a legacy session still carried Stripe shipping_options.
   const full = await stripe.checkout.sessions.retrieve(session.id, {
     expand: ["shipping_cost.shipping_rate"],
   });
   const rate = full.shipping_cost?.shipping_rate;
   const rateObj = rate && typeof rate !== "string" ? rate : null;
 
-  // The shipping address the customer typed into the ShippingAddressElement lands
-  // in collected_information.shipping_details (or the legacy shipping_details) —
-  // NOT customer_details (that's billing, which Link/Apple Pay may leave empty).
-  // Normalize to { name, phone, address } for the order + emails.
+  // Stripe-collected shipping details (only present on the legacy shipping_options
+  // flow). In the address-first flow this is null and we keep our stored address.
   const collected = full.collected_information?.shipping_details ?? full.shipping_details ?? null;
   const shipTo = {
     name: collected?.name ?? full.customer_details?.name ?? null,
-    // Phone now comes from Stripe's phone_number_collection (wallet/SDK); the
-    // session metadata is a fallback. FedEx requires a recipient phone.
     phone: full.customer_details?.phone ?? full.metadata?.phone ?? null,
-    address: collected?.address ?? full.customer_details?.address ?? null,
+    address: collected?.address ?? null,
   };
 
-  const reconciliation: Record<string, unknown> = {
-    shipping_cents: full.shipping_cost?.amount_total ?? 0,
-    shipping_method: rateObj?.display_name ?? null,
-    shipping_service: rateObj?.metadata?.service_type ?? null,
-    shipping_carrier: rateObj?.metadata?.carrier ?? null,
-  };
+  const reconciliation: Record<string, unknown> = {};
+  // Only reconcile shipping from Stripe when the session actually carried a
+  // shipping_cost (legacy flow). The address-first flow already stored these.
+  if (full.shipping_cost) {
+    reconciliation.shipping_cents = full.shipping_cost.amount_total ?? 0;
+    if (rateObj?.display_name) reconciliation.shipping_method = rateObj.display_name;
+    if (rateObj?.metadata?.service_type) reconciliation.shipping_service = rateObj.metadata.service_type;
+    if (rateObj?.metadata?.carrier) reconciliation.shipping_carrier = rateObj.metadata.carrier;
+  }
+  // Only overwrite the stored address if Stripe actually collected one.
+  if (collected?.address) {
+    reconciliation.shipping_address = shipTo as unknown as Record<string, unknown>;
+  }
 
   // The order was created with a placeholder email (the real one arrives from
-  // the wallet/SDK). Reconcile it and link/create the customer BEFORE finalizing
-  // (finalize_paid_order rolls revenue onto orders.customer_id).
+  // our form or the SDK). Reconcile it and link/create the customer BEFORE
+  // finalizing (finalize_paid_order rolls revenue onto orders.customer_id).
   const realEmail = full.customer_details?.email ?? full.customer_email ?? null;
   if (realEmail) {
     reconciliation.email = realEmail;
@@ -116,11 +117,9 @@ async function fulfillOrder(
     if (cust?.id) reconciliation.customer_id = cust.id;
   }
   if (full.amount_total != null) reconciliation.total_cents = full.amount_total;
-  // Store the contact even for pickup (no address) so we keep the phone/name.
-  if (shipTo.address || shipTo.phone) {
-    reconciliation.shipping_address = shipTo as unknown as Record<string, unknown>;
+  if (Object.keys(reconciliation).length > 0) {
+    await db.from("orders").update(reconciliation).eq("id", orderId);
   }
-  await db.from("orders").update(reconciliation).eq("id", orderId);
 
   // Atomic: mark paid + decrement inventory + roll up stats (idempotent in SQL).
   const { data: didTransition } = await db.rpc("finalize_paid_order", {
@@ -131,10 +130,26 @@ async function fulfillOrder(
 
   const { data: order } = await db
     .from("orders")
-    .select("order_number, email, fulfillment_type, subtotal_cents, discount_cents, shipping_cents, total_cents")
+    .select(
+      "order_number, email, fulfillment_type, subtotal_cents, discount_cents, shipping_cents, total_cents, shipping_method, shipping_address",
+    )
     .eq("id", orderId)
     .single();
   const isPickup = order?.fulfillment_type === "pickup";
+
+  // The order's stored shipping_address is authoritative (we collect it in our
+  // own form), so the store-notification email reads name/phone/address from it,
+  // falling back to anything Stripe collected.
+  const stored = order?.shipping_address as {
+    name?: string | null;
+    phone?: string | null;
+    address?: Record<string, unknown> | null;
+  } | null;
+  const emailShipTo = {
+    name: stored?.name ?? shipTo.name,
+    phone: stored?.phone ?? shipTo.phone,
+    address: (stored?.address ?? shipTo.address) as typeof shipTo.address,
+  };
   const { data: items } = await db
     .from("order_items")
     .select("title, variant_title, quantity, total_cents")
@@ -166,12 +181,12 @@ async function fulfillOrder(
     // they can start baking and packing. Best-effort; never blocks fulfillment.
     await sendEmail({
       to: "hello@claudettescookies.shop",
-      subject: `New order #${order.order_number} — ${shipTo.name ?? order.email}`,
+      subject: `New order #${order.order_number} — ${emailShipTo.name ?? order.email}`,
       html: newOrderEmail({
         orderNumber: order.order_number,
-        customerName: shipTo.name,
+        customerName: emailShipTo.name,
         customerEmail: order.email,
-        phone: shipTo.phone,
+        phone: emailShipTo.phone,
         items: (items ?? []).map((i) => ({
           title: i.title,
           variantTitle: i.variant_title,
@@ -182,8 +197,8 @@ async function fulfillOrder(
         discountCents: order.discount_cents,
         shippingCents: order.shipping_cents,
         totalCents: order.total_cents,
-        shippingMethod: rateObj?.display_name ?? null,
-        address: shipTo.address,
+        shippingMethod: order.shipping_method ?? null,
+        address: emailShipTo.address,
         pickup: isPickup,
         siteUrl: env.NEXT_PUBLIC_SITE_URL,
       }),

@@ -1,29 +1,19 @@
 import { env } from "@/lib/env";
+import { SHIP_FROM } from "@/lib/ship-from";
 import type { DeliveryStatus, TrackResult, LabelRecipient, FedExLabel } from "@/lib/fedex";
 
 /**
- * Shippo multi-carrier shipping. Talks to your connected carrier account(s)
- * (FedEx/USPS/UPS) through Shippo's API, so labels + tracking work without
- * fighting FedEx's direct production-API approval. Reuses the FEDEX_SHIP_FROM_*
- * env fields as the ship-from origin.
+ * Shippo multi-carrier shipping: live rates, labels, and tracking via your
+ * Shippo account (USPS is built in — no carrier connection needed). Ship-from
+ * comes from SHIP_FROM (code config), so no FedEx env vars are required.
  */
 const BASE = "https://api.goshippo.com";
 
 // A standard 6-cookie box. Override later if your packaging differs.
 const PARCEL = { length: "9", width: "6", height: "3", distance_unit: "in" as const };
 
-// Shippo requires a sender email on the ship-from address.
-const SHIP_FROM_EMAIL = "hello@claudettescookies.shop";
-
 export function isShippoConfigured(): boolean {
-  return Boolean(
-    env.SHIPPO_API_TOKEN &&
-      env.FEDEX_SHIP_FROM_NAME &&
-      env.FEDEX_SHIP_FROM_STREET &&
-      env.FEDEX_SHIP_FROM_CITY &&
-      env.FEDEX_SHIP_FROM_STATE &&
-      (env.FEDEX_SHIP_FROM_ZIP || env.FEDEX_ORIGIN_ZIP),
-  );
+  return Boolean(env.SHIPPO_API_TOKEN);
 }
 
 function authHeaders() {
@@ -45,76 +35,138 @@ async function shippoError(res: Response, what: string): Promise<string> {
   return `Shippo ${what} failed (${res.status}): ${detail}`;
 }
 
-/** Create + buy a real label via Shippo, returning tracking + the PDF (base64). */
-export async function createShippoLabel(opts: {
-  recipient: LabelRecipient;
-  weightLb: number;
-}): Promise<FedExLabel & { carrier: string }> {
-  if (!isShippoConfigured()) {
-    throw new Error("Shippo isn't configured (set SHIPPO_API_TOKEN and the ship-from address).");
-  }
-  const fromZip = env.FEDEX_SHIP_FROM_ZIP || env.FEDEX_ORIGIN_ZIP!;
+export interface ShipTo {
+  name?: string | null;
+  phone?: string | null;
+  line1: string;
+  line2?: string | null;
+  city: string;
+  state: string;
+  postalCode: string;
+}
 
-  // 1) Create a shipment to get live rates.
-  const shipRes = await fetch(`${BASE}/shipments/`, {
+type ShippoRate = {
+  object_id: string;
+  provider: string;
+  amount: string;
+  servicelevel?: { name?: string; token?: string };
+  estimated_days?: number;
+};
+
+export interface RateOption {
+  /** Shippo rate object id — buy this exact rate when generating the label. */
+  rateId: string;
+  /** Stable service identifier (e.g. "usps_priority"); survives a re-quote, so
+   *  it's what the client sends back and the server re-derives the price from. */
+  serviceToken: string;
+  carrier: string;
+  service: string;
+  amountCents: number;
+  estimatedDays: number | null;
+}
+
+/** Create a Shippo shipment (from SHIP_FROM to `to`) and return its rates. */
+async function createShipment(to: ShipTo, weightLb: number): Promise<ShippoRate[]> {
+  if (!isShippoConfigured()) throw new Error("Shippo isn't configured (set SHIPPO_API_TOKEN).");
+  const res = await fetch(`${BASE}/shipments/`, {
     method: "POST",
     headers: authHeaders(),
     body: JSON.stringify({
       address_from: {
-        name: env.FEDEX_SHIP_FROM_NAME,
-        street1: env.FEDEX_SHIP_FROM_STREET,
-        city: env.FEDEX_SHIP_FROM_CITY,
-        state: env.FEDEX_SHIP_FROM_STATE,
-        zip: fromZip,
+        name: SHIP_FROM.name,
+        street1: SHIP_FROM.street,
+        city: SHIP_FROM.city,
+        state: SHIP_FROM.state,
+        zip: SHIP_FROM.zip,
         country: "US",
-        phone: env.FEDEX_SHIP_FROM_PHONE,
-        email: SHIP_FROM_EMAIL,
+        phone: SHIP_FROM.phone,
+        email: SHIP_FROM.email,
       },
       address_to: {
-        name: opts.recipient.name,
-        street1: opts.recipient.line1,
-        street2: opts.recipient.line2 || "",
-        city: opts.recipient.city,
-        state: opts.recipient.state,
-        zip: opts.recipient.postalCode,
+        name: to.name || "Customer",
+        street1: to.line1,
+        street2: to.line2 || "",
+        city: to.city,
+        state: to.state,
+        zip: to.postalCode,
         country: "US",
-        phone: opts.recipient.phone || env.FEDEX_SHIP_FROM_PHONE,
+        phone: to.phone || SHIP_FROM.phone,
       },
       parcels: [
         {
           ...PARCEL,
-          weight: Math.max(0.1, Number(opts.weightLb.toFixed(2))).toString(),
+          weight: Math.max(0.1, Number(weightLb.toFixed(2))).toString(),
           mass_unit: "lb",
         },
       ],
       async: false,
     }),
   });
-  if (!shipRes.ok) throw new Error(await shippoError(shipRes, "create shipment"));
+  if (!res.ok) throw new Error(await shippoError(res, "create shipment"));
+  const shipment = (await res.json()) as { rates?: ShippoRate[] };
+  return shipment.rates ?? [];
+}
 
-  const shipment = (await shipRes.json()) as {
-    rates?: Array<{ object_id: string; provider: string; amount: string; servicelevel?: { name?: string } }>;
-  };
-  const rates = shipment.rates ?? [];
-  if (rates.length === 0) {
-    throw new Error("Shippo returned no rates — check your connected carriers and the addresses.");
+/** Live rates to a destination, preferred carrier first (default USPS), cheapest→. */
+export async function getShippoRates(to: ShipTo, weightLb: number): Promise<RateOption[]> {
+  const rates = await createShipment(to, weightLb);
+  if (rates.length === 0) return [];
+  const preferred = (env.SHIPPO_CARRIER || "USPS").toLowerCase();
+  const filtered = rates.filter((r) => r.provider.toLowerCase() === preferred);
+  const use = filtered.length ? filtered : rates;
+  return use
+    .map((r) => ({
+      rateId: r.object_id,
+      serviceToken: r.servicelevel?.token || r.object_id,
+      carrier: r.provider,
+      service: r.servicelevel?.name || "Shipping",
+      amountCents: Math.round(Number(r.amount) * 100),
+      estimatedDays: r.estimated_days ?? null,
+    }))
+    .sort((a, b) => a.amountCents - b.amountCents);
+}
+
+/** Buy a label. If `rateId` is given (from a live quote), buys that exact rate;
+ *  otherwise re-quotes and buys the cheapest of the preferred carrier. */
+export async function createShippoLabel(opts: {
+  recipient: LabelRecipient;
+  weightLb: number;
+  rateId?: string | null;
+}): Promise<FedExLabel & { carrier: string }> {
+  if (!isShippoConfigured()) throw new Error("Shippo isn't configured (set SHIPPO_API_TOKEN).");
+
+  let rateId = opts.rateId || null;
+  let carrier = "USPS";
+  if (!rateId) {
+    const rates = await createShipment(
+      {
+        name: opts.recipient.name,
+        phone: opts.recipient.phone,
+        line1: opts.recipient.line1,
+        line2: opts.recipient.line2,
+        city: opts.recipient.city,
+        state: opts.recipient.state,
+        postalCode: opts.recipient.postalCode,
+      },
+      opts.weightLb,
+    );
+    if (rates.length === 0) {
+      throw new Error("Shippo returned no rates — check the addresses and your connected carriers.");
+    }
+    const preferred = (env.SHIPPO_CARRIER || "USPS").toLowerCase();
+    const cheapest = (list: ShippoRate[]) =>
+      [...list].sort((a, b) => Number(a.amount) - Number(b.amount))[0];
+    const rate = cheapest(rates.filter((r) => r.provider.toLowerCase() === preferred)) ?? cheapest(rates);
+    rateId = rate.object_id;
+    carrier = rate.provider;
   }
 
-  // Prefer the configured carrier (default FedEx); fall back to the cheapest.
-  const cheapest = (list: typeof rates) =>
-    [...list].sort((a, b) => Number(a.amount) - Number(b.amount))[0];
-  const preferred = (env.SHIPPO_CARRIER || "FedEx").toLowerCase();
-  const rate =
-    cheapest(rates.filter((r) => r.provider.toLowerCase() === preferred)) ?? cheapest(rates);
-
-  // 2) Buy the label.
   const txRes = await fetch(`${BASE}/transactions/`, {
     method: "POST",
     headers: authHeaders(),
-    body: JSON.stringify({ rate: rate.object_id, label_file_type: "PDF", async: false }),
+    body: JSON.stringify({ rate: rateId, label_file_type: "PDF", async: false }),
   });
   if (!txRes.ok) throw new Error(await shippoError(txRes, "buy label"));
-
   const tx = (await txRes.json()) as {
     status: string;
     tracking_number?: string;
@@ -126,15 +178,13 @@ export async function createShippoLabel(opts: {
     throw new Error(`Shippo couldn't create the label: ${msg}`);
   }
 
-  // 3) Download the hosted PDF so it can be stored like a FedEx label.
   const pdfRes = await fetch(tx.label_url);
   if (!pdfRes.ok) throw new Error("Could not download the Shippo label PDF.");
   const labelBase64 = Buffer.from(await pdfRes.arrayBuffer()).toString("base64");
 
-  return { trackingNumber: tx.tracking_number, labelBase64, carrier: rate.provider };
+  return { trackingNumber: tx.tracking_number, labelBase64, carrier };
 }
 
-// Shippo tracking carrier tokens.
 const CARRIER_TOKEN: Record<string, string> = {
   fedex: "fedex",
   usps: "usps",
@@ -148,15 +198,13 @@ export async function trackViaShippo(
   carrier?: string | null,
 ): Promise<TrackResult> {
   if (!isShippoConfigured()) throw new Error("Shippo isn't configured.");
-  const token = CARRIER_TOKEN[(carrier || "fedex").toLowerCase()] ?? (carrier || "fedex").toLowerCase();
+  const token = CARRIER_TOKEN[(carrier || "usps").toLowerCase()] ?? (carrier || "usps").toLowerCase();
   const res = await fetch(`${BASE}/tracks/${token}/${encodeURIComponent(trackingNumber)}`, {
     headers: authHeaders(),
   });
   if (!res.ok) throw new Error(await shippoError(res, "track"));
 
-  const json = (await res.json()) as {
-    tracking_status?: { status?: string; status_date?: string };
-  };
+  const json = (await res.json()) as { tracking_status?: { status?: string; status_date?: string } };
   const s = (json.tracking_status?.status || "").toUpperCase();
   let status: DeliveryStatus = "unknown";
   if (s === "DELIVERED") status = "delivered";

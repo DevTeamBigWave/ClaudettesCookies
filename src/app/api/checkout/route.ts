@@ -7,32 +7,44 @@ import {
   isDiscountValid,
   priceCart,
   qualifiesForFreeShipping,
-  FLAT_SHIPPING_CENTS,
-  FLAT_EXPRESS_SHIPPING_CENTS,
   type PricedLine,
 } from "@/lib/pricing";
+import { resolveRate, type CheckoutRate } from "@/lib/live-shipping";
 import { BUILD_YOUR_OWN_HANDLE, BOX_SIZE } from "@/lib/data/products";
-import { PICKUP } from "@/lib/pickup";
 import type { Discount } from "@/types/db";
 
 export const runtime = "nodejs";
 
 // The installed Stripe Node types (acacia) predate Custom Checkout's `ui_mode:
-// "custom"` and the dynamic-shipping `permissions` field. They're valid request
-// params, so we extend the typed create params here rather than upgrade the SDK.
+// "custom"`. It's a valid request param, so we extend the typed create params
+// here rather than upgrade the SDK.
 type CustomCheckoutCreateParams = Omit<Stripe.Checkout.SessionCreateParams, "ui_mode"> & {
   ui_mode: "custom";
-  permissions?: { update_shipping_details?: "server_only" };
 };
 
 const Body = z.object({
-  // In the unified flow these arrive from the wallet (Apple Pay) or via the
-  // Checkout SDK (updateEmail/updatePhoneNumber) after the session exists, so
-  // they're optional at create time; the webhook reconciles the real values.
+  // Email/phone arrive from our form (the customer types them before the Stripe
+  // elements mount) or via the Checkout SDK; optional at create time, the webhook
+  // reconciles the real values.
   email: z.string().email().optional(),
   phone: z.string().trim().min(7).max(40).optional(),
   // When true, local pickup: no shipping address, no carrier, free.
   pickup: z.boolean().optional(),
+  // Shipping destination, collected in our own form so we can quote live USPS
+  // rates before payment. Required for ship orders (not pickup).
+  address: z
+    .object({
+      name: z.string().trim().optional(),
+      line1: z.string().trim().min(1),
+      line2: z.string().trim().optional(),
+      city: z.string().trim().min(1),
+      state: z.string().trim().length(2),
+      postalCode: z.string().trim().min(3).max(10),
+    })
+    .optional(),
+  // The live rate the customer picked (CheckoutRate.id). The server re-quotes and
+  // matches this so the billed amount can't be tampered with; cheapest if absent.
+  rateId: z.string().trim().max(80).optional(),
   discountCode: z.string().trim().min(1).max(40).optional(),
   items: z
     .array(
@@ -53,7 +65,10 @@ export async function POST(req: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
-  const { email, phone, items, discountCode, pickup } = parsed.data;
+  const { email, phone, items, discountCode, pickup, address, rateId } = parsed.data;
+  if (!pickup && !address) {
+    return NextResponse.json({ error: "A shipping address is required." }, { status: 400 });
+  }
   // Placeholder until the customer's real email arrives (wallet or SDK) and the
   // webhook reconciles it. orders.email is NOT NULL, so we always set something.
   const orderEmail = email || "pending@orders.claudettescookies.shop";
@@ -165,12 +180,53 @@ export async function POST(req: Request) {
     }
   }
 
-  // Shipping is chosen later, inside the embedded checkout, once the customer
-  // enters their address (see /api/checkout/shipping). Price the cart with no
-  // shipping for now — the Stripe session computes the live total from the
-  // selected tier, and the webhook reconciles the order's final amounts.
-  const cart = priceCart(priced, discount, 0);
+  // Resolve shipping server-side. For ship orders, re-quote the live rate the
+  // customer selected (so the billed amount can't be tampered with); pickup is
+  // free. Free-shipping perks (threshold or a free_shipping discount) zero it out
+  // inside priceCart regardless of the quoted amount.
+  let shippingRate: CheckoutRate | null = null;
+  if (!pickup && address) {
+    shippingRate = await resolveRate(
+      db,
+      {
+        name: address.name,
+        phone,
+        line1: address.line1,
+        line2: address.line2,
+        city: address.city,
+        state: address.state,
+        postalCode: address.postalCode,
+      },
+      items.map((i) => ({ variantId: i.variantId, quantity: i.quantity })),
+      rateId,
+    );
+  }
+  const cart = priceCart(priced, discount, pickup ? 0 : shippingRate?.amountCents);
   const freeShipping = qualifiesForFreeShipping(cart.subtotalCents, cart.discountCents, discount);
+
+  // The shipping address/contact we collected, stored on the order up front (the
+  // address-first flow doesn't use Stripe's address collection, so the webhook
+  // won't overwrite this). Shape matches what the admin/label code reads.
+  const shippingAddress =
+    !pickup && address
+      ? {
+          name: address.name ?? null,
+          phone: phone ?? null,
+          address: {
+            line1: address.line1,
+            line2: address.line2 ?? null,
+            city: address.city,
+            state: address.state,
+            postal_code: address.postalCode,
+            country: "US",
+          },
+        }
+      : { name: null, phone: phone ?? null, address: null };
+  const shippingMethod = pickup
+    ? "Local pickup"
+    : freeShipping
+      ? "Free shipping"
+      : `${shippingRate?.carrier ?? "USPS"} · ${shippingRate?.service ?? "Shipping"}`;
 
   // 3) Upsert the customer when we already know the email; otherwise the webhook
   //    links/creates the customer from the wallet/SDK email after payment.
@@ -192,6 +248,10 @@ export async function POST(req: Request) {
       total_cents: cart.totalCents,
       discount_id: discount?.id ?? null,
       discount_code: discount?.code ?? null,
+      shipping_method: shippingMethod,
+      shipping_carrier: pickup ? "Pickup" : freeShipping ? "Flat" : (shippingRate?.carrier ?? "USPS"),
+      shipping_service: pickup ? "PICKUP" : (shippingRate?.id ?? "FLAT"),
+      shipping_address: shippingAddress,
     })
     .select("id, order_number")
     .single();
@@ -237,66 +297,32 @@ export async function POST(req: Request) {
     },
   }));
 
-  // Local pickup: a single $0 "Local pickup" option and no shipping address.
-  const pickupOption: Stripe.Checkout.SessionCreateParams.ShippingOption = {
-    shipping_rate_data: {
-      type: "fixed_amount",
-      fixed_amount: { amount: 0, currency: "usd" },
-      display_name: PICKUP.label,
-      metadata: { tier: "Pickup", service_type: "PICKUP", carrier: "Pickup" },
-    },
-  };
-
-  // Fixed shipping tiers set at session creation. Flat for now (FedEx isn't live
-  // to quote per-address rates); free orders get a single $0 tier. Because these
-  // are set up front, we don't use server-only dynamic shipping — which keeps
-  // checkout simple and lets confirm() run with the address element mounted.
-  // (When FedEx production is enabled, switch back to address-driven rates.)
-  const shippingOptions: Stripe.Checkout.SessionCreateParams.ShippingOption[] = pickup
-    ? [pickupOption]
-    : freeShipping
-    ? [
-        {
-          shipping_rate_data: {
-            type: "fixed_amount",
-            fixed_amount: { amount: 0, currency: "usd" },
-            display_name: "Free shipping",
-            metadata: { tier: "Free shipping", service_type: "FREE", carrier: "Flat" },
-          },
-        },
-      ]
-    : [
-        {
-          shipping_rate_data: {
-            type: "fixed_amount",
-            fixed_amount: { amount: FLAT_SHIPPING_CENTS, currency: "usd" },
-            display_name: "Regular",
-            metadata: { tier: "Regular", service_type: "FLAT", carrier: "Flat" },
-          },
-        },
-        {
-          shipping_rate_data: {
-            type: "fixed_amount",
-            fixed_amount: { amount: FLAT_EXPRESS_SHIPPING_CENTS, currency: "usd" },
-            display_name: "Express",
-            metadata: { tier: "Express", service_type: "FLAT_EXPRESS", carrier: "Flat" },
-          },
-        },
-      ];
+  // Shipping is collected in our own address form and quoted live before the
+  // session is created, so we bake the chosen rate in as a line item instead of
+  // using Stripe's shipping_options (which would require Stripe to collect the
+  // address again, and can't reflect a per-address live rate set up front). The
+  // discount coupon below applies to the whole total, so amounts stay exact.
+  if (cart.shippingCents > 0) {
+    lineItems.push({
+      quantity: 1,
+      price_data: {
+        currency: "usd",
+        unit_amount: cart.shippingCents,
+        product_data: { name: shippingMethod },
+      },
+    });
+  }
 
   let session: Stripe.Checkout.Session;
   try {
     const params: CustomCheckoutCreateParams = {
       mode: "payment",
       ui_mode: "custom",
-      // Only set when known up front; otherwise the wallet/SDK provides it.
+      // Only set when known up front; otherwise the SDK provides it.
       ...(email ? { customer_email: email } : {}),
       line_items: lineItems,
-      // No shipping address for pickup orders.
-      shipping_address_collection: pickup ? undefined : { allowed_countries: ["US"] },
-      shipping_options: shippingOptions,
-      // Collect a phone number (FedEx requires a recipient phone). Wallets fill
-      // it; the manual flow sets it via the SDK (updatePhoneNumber).
+      // Collect a phone number (the carrier requires a recipient phone). The
+      // manual flow also sets it via the SDK (updatePhoneNumber) as a fallback.
       phone_number_collection: { enabled: true },
       // Apply discount as a Stripe coupon so the displayed total matches our math.
       discounts:

@@ -41,33 +41,27 @@ const serverSchema = z.object({
   // fails closed with a clear message when this isn't set.
   ANTHROPIC_API_KEY: z.string().min(1).optional(),
   CRON_SECRET: z.string().min(16).optional(),
-  // Live FedEx shipping rates. Feature-gated: when any of these is missing the
-  // quote endpoint falls back to flat-rate shipping instead of failing. Defaults
-  // to FedEx's sandbox so test credentials are never billed; set
-  // FEDEX_ENV="production" to use live rates.
+  // Shippo powers live rates, labels, and tracking (USPS built in — no carrier
+  // approval needed). It's the only shipping integration the app uses now; the
+  // ship-from origin lives in code (src/lib/ship-from.ts), not env. SHIPPO_CARRIER
+  // picks which carrier to prefer (default USPS). When SHIPPO_API_TOKEN is unset,
+  // checkout falls back to flat-rate shipping and labels are disabled.
+  SHIPPO_API_TOKEN: z.string().min(1).optional(),
+  SHIPPO_CARRIER: z.string().min(1).default("USPS"),
+  // Legacy FedEx-direct integration — kept optional so old Railway vars don't
+  // break boot, but unused now that shipping goes through Shippo. Safe to delete
+  // all FEDEX_* vars from the environment.
   FEDEX_API_KEY: z.string().min(1).optional(),
   FEDEX_API_SECRET: z.string().min(1).optional(),
   FEDEX_ACCOUNT_NUMBER: z.string().min(1).optional(),
   FEDEX_ORIGIN_ZIP: z.string().min(3).optional(),
   FEDEX_ENV: z.enum(["sandbox", "production"]).default("sandbox"),
-  // Ship-from contact + address, used only for generating real FedEx labels
-  // (the Ship API needs a full origin, not just a ZIP). Feature-gated on top of
-  // the rate credentials: `isFedExShipConfigured()` checks these before the
-  // admin "Generate label" action is offered. FEDEX_SHIP_FROM_ZIP falls back to
-  // FEDEX_ORIGIN_ZIP when unset.
   FEDEX_SHIP_FROM_NAME: z.string().min(1).optional(),
   FEDEX_SHIP_FROM_PHONE: z.string().min(1).optional(),
   FEDEX_SHIP_FROM_STREET: z.string().min(1).optional(),
   FEDEX_SHIP_FROM_CITY: z.string().min(1).optional(),
   FEDEX_SHIP_FROM_STATE: z.string().length(2).optional(),
   FEDEX_SHIP_FROM_ZIP: z.string().min(3).optional(),
-  // Shippo multi-carrier label/tracking. When SHIPPO_API_TOKEN is set, the admin
-  // "Generate label" + delivery tracking use Shippo (which talks to your
-  // connected FedEx/USPS/UPS account) instead of the FedEx Ship API directly —
-  // bypassing FedEx's production-API approval. Reuses the FEDEX_SHIP_FROM_* fields
-  // as the ship-from origin. SHIPPO_CARRIER picks which carrier to prefer.
-  SHIPPO_API_TOKEN: z.string().min(1).optional(),
-  SHIPPO_CARRIER: z.string().min(1).default("USPS"),
   // Google Calendar order sync (OAuth user credentials — keyless, no service
   // account). Feature-gated: when the client id/secret/refresh token are
   // missing, paid orders simply aren't mirrored to the calendar. The refresh

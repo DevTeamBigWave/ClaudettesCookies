@@ -1,31 +1,53 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   CheckoutElementsProvider,
   useCheckoutElements,
   PaymentElement,
-  ShippingAddressElement,
-  ExpressCheckoutElement,
 } from "@stripe/react-stripe-js/checkout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useCart } from "@/store/cart";
 import { getStripe, STRIPE_PUBLISHABLE_KEY } from "@/lib/stripe-client";
+import { FREE_SHIPPING_THRESHOLD_CENTS } from "@/lib/pricing";
 import { formatMoney } from "@/lib/utils";
+
+type Rate = {
+  id: string;
+  carrier: string;
+  service: string;
+  amountCents: number;
+  estimatedDays: number | null;
+};
+
+type Address = {
+  name: string;
+  line1: string;
+  line2: string;
+  city: string;
+  state: string;
+  postalCode: string;
+};
+
+const EMPTY_ADDRESS: Address = { name: "", line1: "", line2: "", city: "", state: "", postalCode: "" };
 
 export default function CheckoutPage() {
   const { lines, subtotalCents } = useCart();
   const [mounted, setMounted] = useState(false);
 
-  // Contact + promo live in the parent so they render instantly (no waiting on
-  // Stripe) and survive the provider re-mounting when the session is recreated.
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [promo, setPromo] = useState("");
-
   const [pickup, setPickup] = useState(false);
+  const [address, setAddress] = useState<Address>(EMPTY_ADDRESS);
+
+  // Live shipping rates for the typed address (fetched on demand).
+  const [rates, setRates] = useState<Rate[] | null>(null);
+  const [selectedRateId, setSelectedRateId] = useState<string | null>(null);
+  const [ratesLoading, setRatesLoading] = useState(false);
+
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [orderNumber, setOrderNumber] = useState<number | null>(null);
   const [creating, setCreating] = useState(false);
@@ -33,7 +55,72 @@ export default function CheckoutPage() {
 
   useEffect(() => setMounted(true), []);
 
-  async function createSession(opts: { pickup: boolean; discountCode?: string }) {
+  const sub = subtotalCents();
+  const freeShipping = sub >= FREE_SHIPPING_THRESHOLD_CENTS;
+
+  const emailValid = /\S+@\S+\.\S+/.test(email);
+  const phoneValid = phone.replace(/\D/g, "").length >= 10;
+  const addressComplete = Boolean(
+    address.line1.trim() &&
+      address.city.trim() &&
+      address.state.trim().length === 2 &&
+      address.postalCode.trim().length >= 5,
+  );
+
+  const itemsPayload = useMemo(
+    () =>
+      lines.map((l) => ({
+        variantId: l.variantId,
+        quantity: l.quantity,
+        composition: l.composition?.map((p) => ({ handle: p.handle, qty: p.qty })),
+      })),
+    [lines],
+  );
+
+  // Any change to the address or cart invalidates a previously fetched quote.
+  useEffect(() => {
+    setRates(null);
+    setSelectedRateId(null);
+  }, [address.line1, address.line2, address.city, address.state, address.postalCode, pickup]);
+
+  function update(field: keyof Address, value: string) {
+    setAddress((a) => ({ ...a, [field]: field === "state" ? value.toUpperCase().slice(0, 2) : value }));
+  }
+
+  async function fetchRates() {
+    if (!addressComplete) return;
+    setRatesLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/checkout/rates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          address: {
+            name: address.name || undefined,
+            line1: address.line1,
+            line2: address.line2 || undefined,
+            city: address.city,
+            state: address.state,
+            postalCode: address.postalCode,
+            phone: phone || undefined,
+          },
+          items: itemsPayload.map((i) => ({ variantId: i.variantId, quantity: i.quantity })),
+        }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { rates?: Rate[]; error?: string };
+      if (!res.ok) throw new Error(data.error ?? "Could not fetch shipping rates");
+      const list = data.rates ?? [];
+      setRates(list);
+      setSelectedRateId(list[0]?.id ?? null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not fetch shipping rates");
+    } finally {
+      setRatesLoading(false);
+    }
+  }
+
+  async function startPayment() {
     setCreating(true);
     setError(null);
     try {
@@ -41,16 +128,31 @@ export default function CheckoutPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          pickup: opts.pickup,
-          discountCode: opts.discountCode || undefined,
-          items: lines.map((l) => ({
-            variantId: l.variantId,
-            quantity: l.quantity,
-            composition: l.composition?.map((p) => ({ handle: p.handle, qty: p.qty })),
-          })),
+          email: emailValid ? email : undefined,
+          phone: phoneValid ? phone : undefined,
+          pickup,
+          discountCode: promo || undefined,
+          ...(pickup
+            ? {}
+            : {
+                address: {
+                  name: address.name || undefined,
+                  line1: address.line1,
+                  line2: address.line2 || undefined,
+                  city: address.city,
+                  state: address.state,
+                  postalCode: address.postalCode,
+                },
+                rateId: selectedRateId ?? undefined,
+              }),
+          items: itemsPayload,
         }),
       });
-      const data = await res.json().catch(() => ({}) as { clientSecret?: string; orderNumber?: number; error?: string });
+      const data = (await res.json().catch(() => ({}))) as {
+        clientSecret?: string;
+        orderNumber?: number;
+        error?: string;
+      };
       if (!res.ok) throw new Error(data.error ?? `Checkout failed (${res.status})`);
       if (!data.clientSecret) throw new Error("Could not start checkout.");
       setClientSecret(data.clientSecret);
@@ -62,27 +164,9 @@ export default function CheckoutPage() {
     }
   }
 
-  // Create the session once, as soon as the cart is known.
-  const created = useRef(false);
-  useEffect(() => {
-    if (mounted && lines.length > 0 && !created.current) {
-      created.current = true;
-      createSession({ pickup: false });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mounted, lines.length]);
-
-  async function changePickup(next: boolean) {
-    if (next === pickup || creating) return;
-    setPickup(next);
+  function editDetails() {
     setClientSecret(null);
-    await createSession({ pickup: next, discountCode: promo });
-  }
-
-  async function applyPromo() {
-    if (creating) return;
-    setClientSecret(null);
-    await createSession({ pickup, discountCode: promo });
+    setOrderNumber(null);
   }
 
   if (!mounted) return <div className="container max-w-2xl py-14" />;
@@ -119,23 +203,60 @@ export default function CheckoutPage() {
     );
   }
 
+  // Once a session exists we hand off to Stripe for payment only (contact,
+  // address, and shipping were all collected above and baked into the session).
+  if (clientSecret) {
+    return (
+      <div className="container max-w-2xl space-y-6 py-14">
+        <div className="flex items-center justify-between">
+          <h1 className="font-display text-4xl font-semibold">Payment</h1>
+          <button
+            type="button"
+            onClick={editDetails}
+            className="text-sm text-muted-foreground underline-offset-2 hover:text-primary hover:underline"
+          >
+            ← Edit details
+          </button>
+        </div>
+        {error && <p className="text-sm text-destructive">{error}</p>}
+        <CheckoutElementsProvider
+          key={clientSecret}
+          stripe={getStripe()}
+          options={{
+            clientSecret,
+            elementsOptions: { appearance: { theme: "stripe", variables: { borderRadius: "12px" } } },
+          }}
+        >
+          <PaymentArea pickup={pickup} orderNumber={orderNumber} email={email} phone={phone} />
+        </CheckoutElementsProvider>
+      </div>
+    );
+  }
+
+  const contactReady = emailValid && phoneValid;
+  // What the primary button does next.
+  const needsRates = !pickup && !freeShipping;
+  const showRates = needsRates && rates !== null;
+  const canContinue = pickup
+    ? contactReady
+    : contactReady && addressComplete && (freeShipping || (showRates && Boolean(selectedRateId)));
+
   return (
     <div className="container max-w-2xl space-y-6 py-14">
       <h1 className="font-display text-4xl font-semibold">Checkout</h1>
       {error && <p className="text-sm text-destructive">{error}</p>}
 
-      {/* Ship vs pickup — instant */}
+      {/* Ship vs pickup */}
       <div className="grid grid-cols-2 gap-2">
         {[
-          { v: false, label: "Ship it", hint: "FedEx to your door" },
+          { v: false, label: "Ship it", hint: "USPS to your door" },
           { v: true, label: "Pick up", hint: "Free · in person" },
         ].map((opt) => (
           <button
             key={opt.label}
             type="button"
-            disabled={creating}
-            onClick={() => changePickup(opt.v)}
-            className={`rounded-xl border p-3 text-left transition-colors disabled:opacity-60 ${
+            onClick={() => setPickup(opt.v)}
+            className={`rounded-xl border p-3 text-left transition-colors ${
               pickup === opt.v ? "border-primary bg-secondary" : "border-border"
             }`}
           >
@@ -145,11 +266,11 @@ export default function CheckoutPage() {
         ))}
       </div>
 
-      {/* Contact — instant */}
+      {/* Contact */}
       <section className="space-y-3 rounded-2xl border border-border bg-card p-6">
         <div className="flex items-center justify-between text-sm">
           <span className="text-muted-foreground">Subtotal</span>
-          <span className="font-medium">{formatMoney(subtotalCents())}</span>
+          <span className="font-medium">{formatMoney(sub)}</span>
         </div>
         <div className="space-y-2">
           <label className="block text-sm font-medium">Email</label>
@@ -173,30 +294,94 @@ export default function CheckoutPage() {
           <label className="block text-sm font-medium">Promo code</label>
           <div className="flex gap-2">
             <Input placeholder="WELCOME10" value={promo} onChange={(e) => setPromo(e.target.value.toUpperCase())} />
-            <Button type="button" variant="outline" disabled={creating || !promo} onClick={applyPromo}>
-              Apply
-            </Button>
           </div>
         </div>
       </section>
 
-      {/* Stripe elements — load once the session is ready (form above stays instant) */}
-      {clientSecret ? (
-        <CheckoutElementsProvider
-          key={clientSecret}
-          stripe={getStripe()}
-          options={{
-            clientSecret,
-            elementsOptions: { appearance: { theme: "stripe", variables: { borderRadius: "12px" } } },
-          }}
-        >
-          <PaymentArea pickup={pickup} orderNumber={orderNumber} email={email} phone={phone} />
-        </CheckoutElementsProvider>
-      ) : (
-        <div className="rounded-2xl border border-border bg-card p-6 text-sm text-muted-foreground">
-          {creating ? "Loading secure payment…" : "…"}
-        </div>
+      {/* Shipping address + live rates (ship only) */}
+      {!pickup && (
+        <section className="space-y-3 rounded-2xl border border-border bg-card p-6">
+          <h2 className="font-display text-lg font-semibold">Shipping address</h2>
+          <Input placeholder="Full name" autoComplete="name" value={address.name} onChange={(e) => update("name", e.target.value)} />
+          <Input placeholder="Street address" autoComplete="address-line1" value={address.line1} onChange={(e) => update("line1", e.target.value)} />
+          <Input placeholder="Apt, suite, etc. (optional)" autoComplete="address-line2" value={address.line2} onChange={(e) => update("line2", e.target.value)} />
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-[1fr_80px_120px]">
+            <Input placeholder="City" autoComplete="address-level2" value={address.city} onChange={(e) => update("city", e.target.value)} />
+            <Input placeholder="State" autoComplete="address-level1" value={address.state} onChange={(e) => update("state", e.target.value)} />
+            <Input placeholder="ZIP" inputMode="numeric" autoComplete="postal-code" value={address.postalCode} onChange={(e) => update("postalCode", e.target.value)} />
+          </div>
+
+          {freeShipping ? (
+            <p className="rounded-lg bg-secondary px-3 py-2 text-sm font-medium text-primary">
+              🎉 You&rsquo;ve unlocked free shipping.
+            </p>
+          ) : showRates ? (
+            <div className="space-y-2 pt-1">
+              <p className="text-sm font-medium">Shipping method</p>
+              {rates && rates.length > 0 ? (
+                rates.map((r) => (
+                  <label
+                    key={r.id}
+                    className="flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-border p-3 text-sm has-[:checked]:border-primary"
+                  >
+                    <span className="flex items-center gap-2.5">
+                      <input
+                        type="radio"
+                        name="rate"
+                        checked={selectedRateId === r.id}
+                        onChange={() => setSelectedRateId(r.id)}
+                      />
+                      <span>
+                        <span className="block font-medium">
+                          {r.carrier === "Flat" ? r.service : `${r.carrier} · ${r.service}`}
+                        </span>
+                        {r.estimatedDays != null && (
+                          <span className="block text-xs text-muted-foreground">
+                            Est. {r.estimatedDays} day{r.estimatedDays === 1 ? "" : "s"}
+                          </span>
+                        )}
+                      </span>
+                    </span>
+                    <span className="font-medium">{formatMoney(r.amountCents)}</span>
+                  </label>
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground">No rates returned. Please check the address.</p>
+              )}
+            </div>
+          ) : (
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              disabled={!addressComplete || ratesLoading}
+              onClick={fetchRates}
+            >
+              {ratesLoading ? "Getting rates…" : "See shipping rates"}
+            </Button>
+          )}
+        </section>
       )}
+
+      {/* Continue to payment */}
+      <div className="rounded-2xl border border-border bg-card p-6">
+        <Button className="w-full" size="lg" disabled={!canContinue || creating} onClick={startPayment}>
+          {creating ? "Loading secure payment…" : "Continue to payment"}
+        </Button>
+        {!canContinue && (
+          <p className="mt-3 text-center text-xs text-muted-foreground">
+            {!emailValid
+              ? "Enter your email to continue."
+              : !phoneValid
+                ? "Add a phone number to continue."
+                : !pickup && !addressComplete
+                  ? "Enter your shipping address."
+                  : needsRates && !showRates
+                    ? "Get shipping rates to continue."
+                    : "Select a shipping method."}
+          </p>
+        )}
+      </div>
     </div>
   );
 }
@@ -212,26 +397,21 @@ function PaymentArea(props: {
 
   const [paying, setPaying] = useState(false);
   const [payError, setPayError] = useState<string | null>(null);
-  const [addressComplete, setAddressComplete] = useState(false);
   const [paymentComplete, setPaymentComplete] = useState(false);
-  const [expressReady, setExpressReady] = useState(false);
 
-  // Apply email/phone to the session (debounced) whenever they change. Covers
-  // both the initial values and edits, and re-applies after a session recreate.
   const emailValid = /\S+@\S+\.\S+/.test(props.email);
   const phoneValid = props.phone.replace(/\D/g, "").length >= 10;
+
+  // Push contact onto the session once the elements load (email is also set as
+  // customer_email at create; phone_number_collection needs a phone before pay).
+  const pushedRef = useRef(false);
   useEffect(() => {
-    if (!co || !emailValid) return;
-    const t = setTimeout(() => co.updateEmail(props.email).catch(() => {}), 350);
-    return () => clearTimeout(t);
+    if (!co || pushedRef.current) return;
+    pushedRef.current = true;
+    if (emailValid) co.updateEmail(props.email).catch(() => {});
+    if (phoneValid) co.updatePhoneNumber(props.phone).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [co, props.email]);
-  useEffect(() => {
-    if (!co || !phoneValid) return;
-    const t = setTimeout(() => co.updatePhoneNumber(props.phone).catch(() => {}), 350);
-    return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [co, props.phone]);
+  }, [co]);
 
   if (result.type === "loading") {
     return <p className="text-sm text-muted-foreground">Loading secure payment…</p>;
@@ -242,28 +422,7 @@ function PaymentArea(props: {
   const checkout = result.checkout;
 
   const totalLabel = checkout.total?.total?.amount ?? "";
-  const selectedId = checkout.shipping?.shippingOption?.id ?? null;
-  // Contact can come from our fields OR Link / a wallet (set on the session).
-  const hasEmail = Boolean(checkout.email) || emailValid;
-  const hasPhone = props.pickup || Boolean(checkout.phoneNumber) || phoneValid;
-  const canPay =
-    hasEmail &&
-    hasPhone &&
-    (props.pickup || addressComplete) &&
-    paymentComplete &&
-    checkout.shippingOptions.length > 0 &&
-    selectedId !== null &&
-    !paying;
-
-  // Tell the customer exactly what's blocking Pay (otherwise a disabled button
-  // with no reason is baffling — e.g. Link fills everything but the phone).
-  let payHint: string | null = null;
-  if (!paying) {
-    if (!hasEmail) payHint = "Enter your email above to continue.";
-    else if (!hasPhone) payHint = "Add a phone number above — the carrier requires it for shipping.";
-    else if (!props.pickup && !addressComplete) payHint = "Complete your shipping address.";
-    else if (!paymentComplete) payHint = "Add your payment details below.";
-  }
+  const canPay = paymentComplete && !paying;
 
   const returnUrl = `${window.location.origin}/checkout/success?order=${props.orderNumber ?? ""}${
     props.pickup ? "&pickup=1" : ""
@@ -288,81 +447,20 @@ function PaymentArea(props: {
 
   return (
     <div className="space-y-6">
-      {/* One-tap express checkout (Apple Pay / Google Pay / Link) — fills contact
-          (+ address for shipping) and pays in one tap. */}
-      <div>
-        <ExpressCheckoutElement
-          onReady={(e) => setExpressReady(Boolean(e.availablePaymentMethods))}
-          onConfirm={async (event) => {
-            setPayError(null);
-            try {
-              const res = await checkout.confirm({ expressCheckoutConfirmEvent: event, returnUrl });
-              if (res.type === "error") setPayError(res.error.message);
-            } catch (err) {
-              setPayError(err instanceof Error ? err.message : "Payment could not be completed.");
-            }
-          }}
-        />
-        {expressReady && (
-          <div className="my-5 flex items-center gap-3 text-xs uppercase tracking-wide text-muted-foreground">
-            <span className="h-px flex-1 bg-border" /> or pay below{" "}
-            <span className="h-px flex-1 bg-border" />
-          </div>
-        )}
-      </div>
-
-      {/* Address or pickup notice */}
-      {props.pickup ? (
+      {props.pickup && (
         <section className="rounded-2xl border border-border bg-card p-6">
           <h2 className="mb-2 font-display text-lg font-semibold">Local pickup</h2>
           <p className="text-sm text-muted-foreground">
             No shipping — we&rsquo;ll contact you within 4 hours with pickup details.
           </p>
         </section>
-      ) : (
-        <section className="rounded-2xl border border-border bg-card p-6">
-          <h2 className="mb-4 font-display text-lg font-semibold">Shipping address</h2>
-          <ShippingAddressElement
-            options={{ display: { name: "full" } }}
-            onChange={(e) => setAddressComplete(e.complete)}
-          />
-        </section>
       )}
 
-      {/* Shipping method */}
-      <section className={`rounded-2xl border border-border bg-card p-6 ${props.pickup ? "hidden" : ""}`}>
-        <h2 className="mb-4 font-display text-lg font-semibold">Shipping method</h2>
-        <div className="space-y-2">
-          {checkout.shippingOptions.map((opt) => (
-            <label
-              key={opt.id}
-              className="flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-border p-3 text-sm has-[:checked]:border-primary"
-            >
-              <span className="flex items-center gap-2.5">
-                <input
-                  type="radio"
-                  name="shipping-tier"
-                  checked={selectedId === opt.id}
-                  onChange={() => checkout.updateShippingOption(opt.id)}
-                />
-                <span className="font-medium">{opt.displayName}</span>
-              </span>
-              <span className="font-medium">{opt.amount}</span>
-            </label>
-          ))}
-        </div>
-      </section>
-
-      {/* Payment (wallets hidden here — they're in the express button above) */}
       <section className="rounded-2xl border border-border bg-card p-6">
         <h2 className="mb-4 font-display text-lg font-semibold">Payment</h2>
-        <PaymentElement
-          options={{ wallets: { applePay: "never", googlePay: "never" } }}
-          onChange={(e) => setPaymentComplete(e.complete)}
-        />
+        <PaymentElement onChange={(e) => setPaymentComplete(e.complete)} />
       </section>
 
-      {/* Total + Pay */}
       <div className="rounded-2xl border border-border bg-card p-6">
         <div className="mb-4 flex items-center justify-between text-base">
           <span className="font-semibold">Total</span>
@@ -372,11 +470,7 @@ function PaymentArea(props: {
         <Button className="w-full" size="lg" onClick={pay} disabled={!canPay}>
           {paying ? "Processing…" : `Pay ${totalLabel}`.trim()}
         </Button>
-        {payHint && !canPay ? (
-          <p className="mt-3 text-center text-xs font-medium text-primary">{payHint}</p>
-        ) : (
-          <p className="mt-3 text-center text-xs text-muted-foreground">Secure checkout powered by Stripe.</p>
-        )}
+        <p className="mt-3 text-center text-xs text-muted-foreground">Secure checkout powered by Stripe.</p>
       </div>
     </div>
   );
