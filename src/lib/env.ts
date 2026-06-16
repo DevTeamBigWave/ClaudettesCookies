@@ -67,7 +67,7 @@ const serverSchema = z.object({
   // bypassing FedEx's production-API approval. Reuses the FEDEX_SHIP_FROM_* fields
   // as the ship-from origin. SHIPPO_CARRIER picks which carrier to prefer.
   SHIPPO_API_TOKEN: z.string().min(1).optional(),
-  SHIPPO_CARRIER: z.string().min(1).default("FedEx"),
+  SHIPPO_CARRIER: z.string().min(1).default("USPS"),
   // Google Calendar order sync (OAuth user credentials — keyless, no service
   // account). Feature-gated: when the client id/secret/refresh token are
   // missing, paid orders simply aren't mirrored to the calendar. The refresh
