@@ -12,6 +12,9 @@ const BASE = "https://api.goshippo.com";
 // A standard 6-cookie box. Override later if your packaging differs.
 const PARCEL = { length: "9", width: "6", height: "3", distance_unit: "in" as const };
 
+// Shippo requires a sender email on the ship-from address.
+const SHIP_FROM_EMAIL = "hello@claudettescookies.shop";
+
 export function isShippoConfigured(): boolean {
   return Boolean(
     env.SHIPPO_API_TOKEN &&
@@ -65,6 +68,7 @@ export async function createShippoLabel(opts: {
         zip: fromZip,
         country: "US",
         phone: env.FEDEX_SHIP_FROM_PHONE,
+        email: SHIP_FROM_EMAIL,
       },
       address_to: {
         name: opts.recipient.name,
