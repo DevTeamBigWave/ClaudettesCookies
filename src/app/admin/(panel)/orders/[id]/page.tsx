@@ -156,7 +156,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
             <div className="rounded-2xl border border-border bg-card p-6">
               <h2 className="mb-1 font-display text-lg font-semibold">Shipping label</h2>
               <p className="mb-4 text-sm text-muted-foreground">
-                {order.shipping_carrier ?? "FedEx"}
+                {order.shipping_carrier && order.shipping_carrier !== "Flat" ? order.shipping_carrier : "USPS / FedEx via Shippo"}
                 {order.shipping_service ? ` · ${order.shipping_service}` : ""}
                 {order.label_generated_at ? ` · printed ${formatDate(order.label_generated_at)}` : ""}
               </p>

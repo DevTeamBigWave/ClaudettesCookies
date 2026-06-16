@@ -48,7 +48,7 @@ export function LabelActions({
       <div className="flex flex-wrap gap-3">
         <Button onClick={generate} disabled={loading || !canGenerate} variant={hasLabel ? "outline" : "default"}>
           {loading ? <Loader2 className="size-4 animate-spin" /> : <Printer className="size-4" />}
-          {hasLabel ? "Regenerate label" : "Generate FedEx label"}
+          {hasLabel ? "Regenerate label" : "Generate shipping label"}
         </Button>
         {hasLabel && (
           <Button asChild variant="outline">
