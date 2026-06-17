@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { MessageCircle, X, Send } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -18,6 +18,43 @@ export function ChatWidget() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // iOS Safari doesn't shrink the layout viewport (vh/dvh) when the on-screen
+  // keyboard opens, and `position: fixed` elements don't lift above it — so a
+  // height set in vh stays full-size behind the keyboard. Drive the panel's
+  // size + position from the VisualViewport API instead, which DOES report the
+  // visible area above the keyboard.
+  const [vp, setVp] = useState<{ height: number; inset: number } | null>(null);
+  useEffect(() => {
+    if (!open || typeof window === "undefined") return;
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const update = () => {
+      // How much of the layout viewport is covered at the bottom (≈ keyboard).
+      const inset = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+      setVp({ height: vv.height, inset });
+    };
+    update();
+    vv.addEventListener("resize", update);
+    vv.addEventListener("scroll", update);
+    return () => {
+      vv.removeEventListener("resize", update);
+      vv.removeEventListener("scroll", update);
+    };
+  }, [open]);
+
+  // > 120px of bottom inset means the keyboard is up (filters out URL-bar jitter).
+  const kbOpen = (vp?.inset ?? 0) > 120;
+  // Panel: when the keyboard is up, sit just above it and fill the visible area;
+  // otherwise use the default floating size.
+  const panelStyle: CSSProperties = kbOpen
+    ? { bottom: `${vp!.inset + 8}px`, height: `${vp!.height - 24}px`, maxHeight: "none" }
+    : { bottom: "6rem", height: "min(70vh, 32rem)" };
+  // Lift the launcher (the close button while open) above the keyboard too, so
+  // it stays tappable.
+  const launcherStyle: CSSProperties = kbOpen
+    ? { bottom: `${vp!.inset + 12}px` }
+    : { bottom: "1.25rem" };
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -81,7 +118,8 @@ export function ChatWidget() {
       <button
         onClick={() => setOpen((o) => !o)}
         aria-label={open ? "Close chat" : "Chat with us"}
-        className="fixed bottom-5 right-5 z-50 flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-xl transition-transform hover:scale-105"
+        style={launcherStyle}
+        className="fixed right-5 z-50 flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-xl transition-transform hover:scale-105"
       >
         {open ? <X className="size-6" /> : <MessageCircle className="size-6" />}
       </button>
@@ -89,10 +127,10 @@ export function ChatWidget() {
       {/* Panel */}
       <div
         className={cn(
-          "fixed bottom-24 right-5 z-50 flex w-[min(92vw,24rem)] flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl transition-all",
+          "fixed right-5 z-50 flex w-[min(92vw,24rem)] flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl transition-all",
           open ? "pointer-events-auto translate-y-0 opacity-100" : "pointer-events-none translate-y-4 opacity-0",
         )}
-        style={{ height: "min(70vh, 32rem)" }}
+        style={panelStyle}
         aria-hidden={!open}
       >
         <div className="flex items-center gap-2 border-b border-border bg-[hsl(var(--maroon))] px-4 py-3 text-[hsl(var(--pink))]">
