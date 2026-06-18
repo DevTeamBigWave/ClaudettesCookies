@@ -4,6 +4,9 @@
 - **Always deliver SQL as copy-paste text in the chat** (a fenced ```sql block the
   user can select and copy), for every seed, migration, or ad-hoc query they need to
   run in Supabase's SQL Editor. Offer a downloadable file as an extra only if asked.
+- **Always push everything to `main`.** After committing on the feature branch,
+  fast-forward `main` to it and push (`git push origin <branch>:main`) so Railway
+  deploys — no need to ask each time.
 
 ## Stack / deploy
 - Next.js (App Router) storefront hosted on **Railway**, served at the custom
