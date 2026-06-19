@@ -227,7 +227,7 @@ export default function CheckoutPage() {
             elementsOptions: { appearance: { theme: "stripe", variables: { borderRadius: "12px" } } },
           }}
         >
-          <PaymentArea pickup={pickup} orderNumber={orderNumber} email={email} phone={phone} />
+          <PaymentArea pickup={pickup} orderNumber={orderNumber} phone={phone} />
         </CheckoutElementsProvider>
       </div>
     );
@@ -389,7 +389,6 @@ export default function CheckoutPage() {
 function PaymentArea(props: {
   pickup: boolean;
   orderNumber: number | null;
-  email: string;
   phone: string;
 }) {
   const result = useCheckoutElements();
@@ -399,17 +398,22 @@ function PaymentArea(props: {
   const [payError, setPayError] = useState<string | null>(null);
   const [paymentComplete, setPaymentComplete] = useState(false);
 
-  const emailValid = /\S+@\S+\.\S+/.test(props.email);
   const phoneValid = props.phone.replace(/\D/g, "").length >= 10;
 
-  // Push contact onto the session once the elements load (email is also set as
-  // customer_email at create; phone_number_collection needs a phone before pay).
+  // The email is already set as `customer_email` when the session is created, so
+  // we must NOT call updateEmail — Stripe throws "email already set", and that
+  // error would crash the whole page. Only the phone needs pushing (the session
+  // enables phone_number_collection but doesn't carry a phone at create). Wrapped
+  // so a contact-sync hiccup can never take down the payment step.
   const pushedRef = useRef(false);
   useEffect(() => {
     if (!co || pushedRef.current) return;
     pushedRef.current = true;
-    if (emailValid) co.updateEmail(props.email).catch(() => {});
-    if (phoneValid) co.updatePhoneNumber(props.phone).catch(() => {});
+    try {
+      if (phoneValid) co.updatePhoneNumber(props.phone).catch(() => {});
+    } catch {
+      /* non-fatal: phone is reconciled by the webhook from session data */
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [co]);
 
@@ -432,7 +436,7 @@ function PaymentArea(props: {
     setPaying(true);
     setPayError(null);
     try {
-      if (emailValid) await checkout.updateEmail(props.email);
+      // Email is already on the session (customer_email) — re-setting it throws.
       if (phoneValid) await checkout.updatePhoneNumber(props.phone);
       const res = await checkout.confirm({ returnUrl });
       if (res.type === "error") {
