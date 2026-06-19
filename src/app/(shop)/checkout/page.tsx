@@ -9,6 +9,7 @@ import {
 } from "@stripe/react-stripe-js/checkout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { useCart } from "@/store/cart";
 import { getStripe, STRIPE_PUBLISHABLE_KEY } from "@/lib/stripe-client";
 import { FREE_SHIPPING_THRESHOLD_CENTS } from "@/lib/pricing";
@@ -219,16 +220,41 @@ export default function CheckoutPage() {
           </button>
         </div>
         {error && <p className="text-sm text-destructive">{error}</p>}
-        <CheckoutElementsProvider
-          key={clientSecret}
-          stripe={getStripe()}
-          options={{
-            clientSecret,
-            elementsOptions: { appearance: { theme: "stripe", variables: { borderRadius: "12px" } } },
-          }}
+        {/* Contain the Stripe widget: if it ever throws while rendering, show a
+            recoverable message here instead of crashing the whole storefront. */}
+        <ErrorBoundary
+          onError={(e) => console.error("Payment widget error:", e)}
+          fallback={
+            <section className="rounded-2xl border border-border bg-card p-6 text-center">
+              <p className="text-4xl">🍪</p>
+              <h2 className="mt-3 font-display text-xl font-semibold">
+                We couldn&rsquo;t load secure payment
+              </h2>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Something hiccuped loading the payment form. Your bag is safe — please try again, or
+                email{" "}
+                <a href="mailto:hello@claudettescookies.shop" className="text-primary hover:underline">
+                  hello@claudettescookies.shop
+                </a>
+                .
+              </p>
+              <Button className="mt-4" variant="outline" onClick={editDetails}>
+                ← Edit details
+              </Button>
+            </section>
+          }
         >
-          <PaymentArea pickup={pickup} orderNumber={orderNumber} phone={phone} />
-        </CheckoutElementsProvider>
+          <CheckoutElementsProvider
+            key={clientSecret}
+            stripe={getStripe()}
+            options={{
+              clientSecret,
+              elementsOptions: { appearance: { theme: "stripe", variables: { borderRadius: "12px" } } },
+            }}
+          >
+            <PaymentArea pickup={pickup} orderNumber={orderNumber} phone={phone} />
+          </CheckoutElementsProvider>
+        </ErrorBoundary>
       </div>
     );
   }
