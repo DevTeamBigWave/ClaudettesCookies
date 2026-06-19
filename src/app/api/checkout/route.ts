@@ -113,8 +113,12 @@ export async function POST(req: Request) {
     const image =
       product?.product_images?.sort((a, b) => a.position - b.position)[0]?.url ?? null;
 
-    // Build-Your-Own: require a valid 6-cookie composition and use it as the
-    // line's display title (price stays the box price — flat, set by the DB).
+    // Build-Your-Own: require a valid 6-cookie composition. A box that's
+    // entirely one flavor is named after that flavor (e.g. "The Sicilian
+    // Stash"), not the generic "Build Your Own Box"; a real mix keeps the
+    // builder title and an itemized content line. (Price is the flat box price
+    // from the DB regardless.)
+    let title = product?.title ?? "Cookie box";
     let variantTitle = v.title;
     if (product?.handle === BUILD_YOUR_OWN_HANDLE || item.composition?.length) {
       const picks = item.composition ?? [];
@@ -129,13 +133,18 @@ export async function POST(req: Request) {
       if (bad) {
         return NextResponse.json({ error: "That flavor is no longer available." }, { status: 409 });
       }
-      variantTitle = picks.map((p) => `${p.qty}× ${flavorNames.get(p.handle)}`).join(", ");
+      if (picks.length === 1) {
+        title = flavorNames.get(picks[0].handle) ?? title;
+        variantTitle = `${BOX_SIZE} cookies`;
+      } else {
+        variantTitle = picks.map((p) => `${p.qty}× ${flavorNames.get(p.handle)}`).join(", ");
+      }
     }
 
     priced.push({
       variantId: v.id,
       productId: v.product_id,
-      title: product?.title ?? "Cookie box",
+      title,
       variantTitle,
       imageUrl: image,
       unitPriceCents: v.price_cents,

@@ -50,13 +50,19 @@ export function BuildYourOwn({
     const composition: BoxPick[] = flavors
       .filter((f) => (counts[f.handle] ?? 0) > 0)
       .map((f) => ({ handle: f.handle, name: f.name, qty: counts[f.handle] }));
-    const variantTitle = composition.map((p) => `${p.qty}× ${p.name}`).join(", ");
+    // A box that's entirely one flavor is named after that flavor (matches what
+    // the server records at checkout); a mix keeps the builder title + list.
+    const single = composition.length === 1;
+    const title = single ? composition[0].name : box.title;
+    const variantTitle = single
+      ? `${boxSize} cookies`
+      : composition.map((p) => `${p.qty}× ${p.name}`).join(", ");
 
     add({
       variantId: box.variantId,
       productId: box.productId,
       handle: box.handle,
-      title: box.title,
+      title,
       variantTitle,
       unitPriceCents: box.unitPriceCents,
       image: box.image,
