@@ -1,6 +1,6 @@
 import { SiteHeader } from "@/components/shop/site-header";
 import { SiteFooter } from "@/components/shop/site-footer";
-import { ChatWidget } from "@/components/shop/chat-widget";
+import { ChatWidgetLoader } from "@/components/shop/chat-widget-loader";
 import { JsonLd } from "@/components/seo/json-ld";
 import { organizationSchema, websiteSchema } from "@/lib/seo";
 
@@ -11,7 +11,7 @@ export default function ShopLayout({ children }: { children: React.ReactNode }) 
       <SiteHeader />
       <main className="flex-1">{children}</main>
       <SiteFooter />
-      <ChatWidget />
+      <ChatWidgetLoader />
     </div>
   );
 }

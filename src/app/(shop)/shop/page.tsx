@@ -9,6 +9,7 @@ export const revalidate = 300;
 export const metadata: Metadata = {
   title: "Shop",
   description: "Every Claudette's box — six cookies, four flavors, zero compromise.",
+  alternates: { canonical: "/shop" },
 };
 
 export default async function ShopPage() {

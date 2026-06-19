@@ -7,8 +7,8 @@ const sans = localFont({
   variable: "--font-sans",
   display: "swap",
   src: [
-    { path: "./fonts/mabry-regular.otf", weight: "400", style: "normal" },
-    { path: "./fonts/mabry-italic.otf", weight: "400", style: "italic" },
+    { path: "./fonts/mabry-regular.woff2", weight: "400", style: "normal" },
+    { path: "./fonts/mabry-italic.woff2", weight: "400", style: "italic" },
   ],
 });
 
@@ -17,8 +17,8 @@ const display = localFont({
   variable: "--font-display",
   display: "swap",
   src: [
-    { path: "./fonts/GT-Alpina-Standard-Regular.otf", weight: "400", style: "normal" },
-    { path: "./fonts/GT-Alpina-Standard-Regular-Italic.otf", weight: "400", style: "italic" },
+    { path: "./fonts/GT-Alpina-Standard-Regular.woff2", weight: "400", style: "normal" },
+    { path: "./fonts/GT-Alpina-Standard-Regular-Italic.woff2", weight: "400", style: "italic" },
   ],
 });
 
@@ -26,11 +26,11 @@ const display = localFont({
 const deco = localFont({
   variable: "--font-deco",
   display: "swap",
-  src: [{ path: "./fonts/central-avenue-bold.otf", weight: "700", style: "normal" }],
+  src: [{ path: "./fonts/central-avenue-bold.woff2", weight: "700", style: "normal" }],
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://claudettescookies.shop"),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.claudettescookies.shop"),
   title: {
     default: "Claudette's Cookies — No Seed Oils. Just Butter.",
     template: "%s · Claudette's Cookies",
@@ -42,6 +42,13 @@ export const metadata: Metadata = {
     siteName: "Claudette's Cookies",
     title: "Claudette's Cookies — No Seed Oils. Just Butter.",
     description: "Moroccan-inspired flavors meet healthy eats. Everybody eats.",
+    images: [{ url: "/brand/og-default.jpg", width: 1200, height: 630, alt: "Claudette's Cookies" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Claudette's Cookies — No Seed Oils. Just Butter.",
+    description: "Moroccan-inspired flavors meet healthy eats. Everybody eats.",
+    images: ["/brand/og-default.jpg"],
   },
 };
 

@@ -13,7 +13,12 @@ export const runtime = "nodejs";
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const code = url.searchParams.get("code");
-  const next = url.searchParams.get("next") ?? "/admin";
+  // Only allow same-site relative paths. An absolute or protocol-relative
+  // `next` (e.g. `https://evil.example` or `//evil.example`) would make this an
+  // open redirect that lends the real login flow to a phishing page.
+  const requested = url.searchParams.get("next");
+  const next =
+    requested && requested.startsWith("/") && !requested.startsWith("//") ? requested : "/admin";
 
   if (code) {
     const supabase = await createClient();

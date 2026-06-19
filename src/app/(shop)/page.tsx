@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
@@ -5,6 +6,10 @@ import { CookiesBeforeChemistry } from "@/components/shop/cookies-before-chemist
 import { ProductCard } from "@/components/shop/product-card";
 import { getActiveProducts, getFeaturedProducts } from "@/lib/data/products";
 import { formatMoney } from "@/lib/utils";
+
+export const metadata: Metadata = {
+  alternates: { canonical: "/" },
+};
 
 export const revalidate = 300; // ISR: refresh catalog every 5 min
 

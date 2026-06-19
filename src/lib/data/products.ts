@@ -1,11 +1,11 @@
-import { createClient } from "@/lib/supabase/server";
+import { createPublicClient } from "@/lib/supabase/public";
 import type { ProductWithRelations } from "@/types/db";
 
 const SELECT = "*, product_images(*), product_variants(*)";
 
 /** All active products for the storefront, ordered for display. */
 export async function getActiveProducts(): Promise<ProductWithRelations[]> {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data, error } = await supabase
     .from("products")
     .select(SELECT)
@@ -16,7 +16,7 @@ export async function getActiveProducts(): Promise<ProductWithRelations[]> {
 }
 
 export async function getFeaturedProducts(limit = 3): Promise<ProductWithRelations[]> {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data, error } = await supabase
     .from("products")
     .select(SELECT)
@@ -48,7 +48,7 @@ export interface Flavor {
  * Seasonal specials appear here automatically once flagged `is_flavor`.
  */
 export async function getFlavors(): Promise<Flavor[]> {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data, error } = await supabase
     .from("products")
     .select("handle, title, is_flavor, status, position, product_images(url, position)")
@@ -67,7 +67,7 @@ export async function getFlavors(): Promise<Flavor[]> {
 export async function getProductByHandle(
   handle: string,
 ): Promise<ProductWithRelations | null> {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data } = await supabase
     .from("products")
     .select(SELECT)

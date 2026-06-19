@@ -60,10 +60,13 @@ export function productSchema(p: ProductWithRelations) {
 }
 
 export function breadcrumbSchema(items: { name: string; path: string }[]) {
+  // Google prefers breadcrumb trails rooted at the homepage; prepend Home so
+  // callers can pass just the section + page.
+  const trail = items[0]?.path === "/" ? items : [{ name: "Home", path: "/" }, ...items];
   return {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
-    itemListElement: items.map((it, i) => ({
+    itemListElement: trail.map((it, i) => ({
       "@type": "ListItem",
       position: i + 1,
       name: it.name,

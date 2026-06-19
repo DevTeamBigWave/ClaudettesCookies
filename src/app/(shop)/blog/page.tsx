@@ -8,6 +8,7 @@ export const revalidate = 300;
 export const metadata: Metadata = {
   title: "Journal",
   description: "Stories from the Claudette's kitchen — flavors, ingredients, and the people behind the box.",
+  alternates: { canonical: "/blog" },
 };
 
 export default async function BlogIndex() {

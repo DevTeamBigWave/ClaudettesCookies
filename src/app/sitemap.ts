@@ -6,7 +6,15 @@ import { COLLECTIONS } from "@/lib/data/collections";
 export const revalidate = 3600;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const base = process.env.NEXT_PUBLIC_SITE_URL ?? "https://claudettescookies.shop";
+  const base = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.claudettescookies.shop";
+
+  // Coerce a DB timestamp into a valid Date; drop it rather than emit a bad
+  // <lastmod> that crawlers ignore.
+  const lastmod = (v: string | null | undefined): Date | undefined => {
+    if (!v) return undefined;
+    const d = new Date(v);
+    return Number.isNaN(d.getTime()) ? undefined : d;
+  };
 
   const staticRoutes = [
     "",
@@ -32,13 +40,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...staticRoutes,
     ...products.map((p) => ({
       url: `${base}/products/${p.handle}`,
-      lastModified: p.updated_at,
+      lastModified: lastmod(p.updated_at),
       changeFrequency: "weekly" as const,
       priority: 0.8,
     })),
     ...posts.map((p) => ({
       url: `${base}/blog/${p.slug}`,
-      lastModified: p.updated_at,
+      lastModified: lastmod(p.updated_at),
       changeFrequency: "monthly" as const,
       priority: 0.5,
     })),
