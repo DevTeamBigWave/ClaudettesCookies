@@ -78,7 +78,7 @@ export async function POST(req: Request) {
   const variantIds = items.map((i) => i.variantId);
   const { data: variants, error } = await db
     .from("product_variants")
-    .select("id, title, price_cents, inventory_qty, product_id, products(title, handle, product_images(url, position))")
+    .select("id, title, price_cents, product_id, products(title, handle, product_images(url, position))")
     .in("id", variantIds);
 
   if (error || !variants) {
@@ -105,13 +105,6 @@ export async function POST(req: Request) {
       | (typeof variants)[number]
       | undefined;
     if (!v) return NextResponse.json({ error: "An item is no longer available" }, { status: 409 });
-    if (v.inventory_qty < item.quantity) {
-      const product = v.products as unknown as { title: string };
-      return NextResponse.json(
-        { error: `Only ${v.inventory_qty} of ${product?.title ?? "an item"} left` },
-        { status: 409 },
-      );
-    }
     const product = v.products as unknown as {
       title: string;
       handle: string;

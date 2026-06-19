@@ -6,7 +6,6 @@ import type { ProductWithRelations } from "@/types/db";
 
 export function ProductCard({ product }: { product: ProductWithRelations }) {
   const image = product.product_images?.[0];
-  const soldOut = (product.product_variants ?? []).every((v) => v.inventory_qty <= 0);
 
   return (
     <Link
@@ -25,14 +24,9 @@ export function ProductCard({ product }: { product: ProductWithRelations }) {
         ) : (
           <div className="flex h-full items-center justify-center text-4xl">🍪</div>
         )}
-        {product.featured && !soldOut && (
+        {product.featured && (
           <Badge variant="accent" className="absolute left-3 top-3">
             Best Seller
-          </Badge>
-        )}
-        {soldOut && (
-          <Badge variant="muted" className="absolute left-3 top-3">
-            Sold Out
           </Badge>
         )}
       </div>

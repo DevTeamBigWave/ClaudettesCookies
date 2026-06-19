@@ -7,21 +7,11 @@ import { useCart, type CartLine } from "@/store/cart";
 
 export function AddToCart({
   line,
-  soldOut,
 }: {
   line: Omit<CartLine, "quantity" | "key">;
-  soldOut: boolean;
 }) {
   const add = useCart((s) => s.add);
   const [added, setAdded] = useState(false);
-
-  if (soldOut) {
-    return (
-      <Button size="lg" disabled className="w-full">
-        Sold Out
-      </Button>
-    );
-  }
 
   return (
     <Button

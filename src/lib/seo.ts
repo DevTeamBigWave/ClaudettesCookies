@@ -36,7 +36,7 @@ export function websiteSchema() {
 export function productSchema(p: ProductWithRelations) {
   const variant = p.product_variants?.[0];
   const image = p.product_images?.sort((a, b) => a.position - b.position)[0];
-  const inStock = (p.product_variants ?? []).some((v) => v.inventory_qty > 0);
+  const inStock = true; // Baked to order — always available.
   const price = ((variant?.price_cents ?? p.price_cents) / 100).toFixed(2);
 
   return {

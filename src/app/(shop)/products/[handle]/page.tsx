@@ -43,7 +43,6 @@ export default async function ProductPage({ params }: Params) {
 
   const variant = product.product_variants?.[0];
   const image = product.product_images?.[0];
-  const soldOut = !variant || variant.inventory_qty <= 0;
   const isBuildYourOwn = product.handle === BUILD_YOUR_OWN_HANDLE;
   const flavors = isBuildYourOwn ? await getFlavors() : [];
 
@@ -92,9 +91,6 @@ export default async function ProductPage({ params }: Params) {
               {formatMoney(product.compare_at_cents)}
             </span>
           )}
-          {!soldOut && variant.inventory_qty <= 6 && (
-            <Badge variant="accent">Only {variant.inventory_qty} left</Badge>
-          )}
         </div>
 
         {product.description && (
@@ -126,7 +122,6 @@ export default async function ProductPage({ params }: Params) {
           ) : (
             variant && (
               <AddToCart
-                soldOut={soldOut}
                 line={{
                   variantId: variant.id,
                   productId: product.id,
