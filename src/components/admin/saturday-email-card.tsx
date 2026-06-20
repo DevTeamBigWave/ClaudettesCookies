@@ -42,10 +42,10 @@ export function SaturdayEmailCard({
       }
       className="rounded-2xl border border-border bg-card p-5"
     >
-      <h2 className="font-display text-lg font-semibold">Saturday email offer</h2>
+      <h2 className="font-display text-lg font-semibold">Marketing email offer &amp; automation</h2>
       <p className="mt-1 text-sm text-muted-foreground">
-        Each Saturday, Claude drafts an email featuring the new Journal posts. Add an offer to fold
-        in — it’s saved as a <strong>draft</strong> for you to review and send.
+        Claude drafts on-brand emails featuring new Journal posts. Add an offer to fold in, and
+        choose whether drafts wait for your review or send automatically.
       </p>
 
       <div className="mt-4 space-y-4">
@@ -92,6 +92,43 @@ export function SaturdayEmailCard({
               <input type="radio" name="offer_mode" value="overwrite" defaultChecked={settings?.offer_mode === "overwrite"} />
               Make the offer the lead
             </label>
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-border bg-secondary/30 p-4">
+          <label className="flex items-start gap-2.5 text-sm">
+            <input
+              type="checkbox"
+              name="auto_send"
+              defaultChecked={settings?.auto_send ?? false}
+              className="mt-0.5 size-4"
+            />
+            <span>
+              <span className="font-semibold">Auto-send generated emails</span>
+              <span className="mt-0.5 block text-xs text-muted-foreground">
+                When on, each AI-drafted email schedules itself to all subscribers after the review
+                window below — no manual send needed. You can still cancel it during the window.
+              </span>
+            </span>
+          </label>
+          <div className="mt-3 flex items-center gap-2">
+            <Label htmlFor="auto_send_delay_minutes" className="text-xs">
+              Review window
+            </Label>
+            <select
+              id="auto_send_delay_minutes"
+              name="auto_send_delay_minutes"
+              defaultValue={String(settings?.auto_send_delay_minutes ?? 120)}
+              className="h-9 rounded-lg border border-input bg-card px-2 text-sm"
+            >
+              <option value="0">Send immediately</option>
+              <option value="30">30 minutes</option>
+              <option value="60">1 hour</option>
+              <option value="120">2 hours</option>
+              <option value="360">6 hours</option>
+              <option value="720">12 hours</option>
+              <option value="1440">24 hours</option>
+            </select>
           </div>
         </div>
       </div>

@@ -217,6 +217,10 @@ export interface MarketingSettings {
   featured_discount_id: string | null;
   offer_note: string | null;
   offer_mode: "add" | "overwrite";
+  /** When true, AI-generated drafts schedule themselves instead of waiting for review. */
+  auto_send: boolean;
+  /** Review window before an auto-sent campaign dispatches, in minutes. */
+  auto_send_delay_minutes: number;
   updated_at: string;
 }
 

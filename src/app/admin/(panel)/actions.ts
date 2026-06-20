@@ -146,11 +146,29 @@ export async function sendCampaignNow(campaignId: string) {
   return result;
 }
 
-// ── Saturday email offer (drives the weekly Journal-roundup draft) ───────────
+/** Stop a not-yet-sent campaign (draft or scheduled) so the cron won't send it. */
+export async function cancelCampaign(campaignId: string) {
+  await requireAdmin();
+  const db = createAdminClient();
+  // Guard on status so an already-sending/sent campaign can't be clobbered.
+  const { error } = await db
+    .from("email_campaigns")
+    .update({ status: "cancelled" })
+    .eq("id", campaignId)
+    .in("status", ["draft", "scheduled"]);
+  if (error) return { error: error.message };
+  revalidatePath("/admin/marketing");
+  return { ok: true };
+}
+
+// ── Saturday email offer + auto-send (drives the AI-generated drafts) ────────
 const MarketingSettingsInput = z.object({
   featured_discount_id: z.union([z.string().uuid(), z.literal("")]).optional(),
   offer_note: z.string().max(1000).optional(),
   offer_mode: z.enum(["add", "overwrite"]).default("add"),
+  // HTML checkbox sends "on" when ticked, nothing when not.
+  auto_send: z.preprocess((v) => v === "on" || v === "true" || v === true, z.boolean()).default(false),
+  auto_send_delay_minutes: z.coerce.number().int().min(0).max(10080).default(120),
 });
 
 export async function saveMarketingSettings(formData: FormData) {
@@ -159,12 +177,14 @@ export async function saveMarketingSettings(formData: FormData) {
   if (!parsed.success) return { error: "Check the offer fields." };
 
   const db = createAdminClient();
-  const { featured_discount_id, offer_note, offer_mode } = parsed.data;
+  const { featured_discount_id, offer_note, offer_mode, auto_send, auto_send_delay_minutes } = parsed.data;
   const { error } = await db.from("marketing_settings").upsert({
     id: 1,
     featured_discount_id: featured_discount_id ? featured_discount_id : null,
     offer_note: offer_note?.trim() ? offer_note.trim() : null,
     offer_mode,
+    auto_send,
+    auto_send_delay_minutes,
     updated_at: new Date().toISOString(),
   });
   if (error) return { error: error.message };

@@ -2,6 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { PageHeader, StatCard, DataTable, StatusPill } from "@/components/admin/ui";
 import { CampaignForm } from "@/components/admin/campaign-form";
 import { CampaignSendButton } from "@/components/admin/campaign-send-button";
+import { CampaignCancelButton } from "@/components/admin/campaign-cancel-button";
 import { SaturdayEmailCard } from "@/components/admin/saturday-email-card";
 import { formatDate } from "@/lib/utils";
 import type { EmailCampaign, Discount, MarketingSettings } from "@/types/db";
@@ -57,9 +58,12 @@ export default async function MarketingPage() {
                 <td className="px-4 py-3 text-muted-foreground">
                   {c.sent_at ? formatDate(c.sent_at) : c.scheduled_at ? formatDate(c.scheduled_at) : formatDate(c.created_at)}
                 </td>
-                <td className="px-4 py-3 text-right">
+                <td className="px-4 py-3">
                   {(c.status === "draft" || c.status === "scheduled") && (
-                    <CampaignSendButton id={c.id} />
+                    <div className="flex items-center justify-end gap-1">
+                      <CampaignSendButton id={c.id} />
+                      <CampaignCancelButton id={c.id} />
+                    </div>
                   )}
                 </td>
               </tr>

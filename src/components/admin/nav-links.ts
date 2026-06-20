@@ -1,5 +1,6 @@
 import {
   LayoutDashboard,
+  BarChart3,
   Package,
   ShoppingCart,
   Users,
@@ -14,6 +15,7 @@ import {
 /** Shared admin navigation, used by both the desktop sidebar and the mobile drawer. */
 export const ADMIN_LINKS: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/admin/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/admin/orders", label: "Orders", icon: ShoppingCart },
   { href: "/admin/products", label: "Products", icon: Package },
   { href: "/admin/customers", label: "Customers", icon: Users },

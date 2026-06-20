@@ -40,6 +40,28 @@ type GeneratedEmail = {
   body_markdown: string;
 };
 
+/**
+ * How a freshly generated email should be saved. When auto-send is off (the
+ * default) it's a plain draft for human review. When on, it's scheduled for
+ * `auto_send_delay_minutes` from now — a review window during which it can still
+ * be cancelled — and the scheduled-campaigns cron dispatches it after that.
+ */
+async function resolveSendMode(
+  db: ReturnType<typeof createAdminClient>,
+): Promise<{ status: "draft" | "scheduled"; scheduled_at: string | null }> {
+  const { data } = await db
+    .from("marketing_settings")
+    .select("auto_send, auto_send_delay_minutes")
+    .eq("id", 1)
+    .maybeSingle<Pick<MarketingSettings, "auto_send" | "auto_send_delay_minutes">>();
+  if (!data?.auto_send) return { status: "draft", scheduled_at: null };
+  const delayMin = Math.max(0, Number(data.auto_send_delay_minutes ?? 120));
+  return {
+    status: "scheduled",
+    scheduled_at: new Date(Date.now() + delayMin * 60_000).toISOString(),
+  };
+}
+
 export async function generateMarketingDraft() {
   if (!env.ANTHROPIC_API_KEY) {
     return { ok: false as const, error: "ANTHROPIC_API_KEY not configured" };
@@ -96,8 +118,9 @@ Return the email as JSON matching the provided schema.`,
   }
   const email = JSON.parse(textBlock.text) as GeneratedEmail;
 
-  // Save as a DRAFT — segment defaults to all subscribed users. A human reviews
-  // and sends it from the admin Marketing page.
+  // Segment defaults to all subscribed users. Saved as a draft for review, or
+  // auto-scheduled when auto-send is enabled (see resolveSendMode).
+  const send = await resolveSendMode(db);
   const { data: inserted, error } = await db
     .from("email_campaigns")
     .insert({
@@ -106,7 +129,8 @@ Return the email as JSON matching the provided schema.`,
       preheader: email.preheader,
       from_name: "Claudette's Cookies",
       body_markdown: email.body_markdown,
-      status: "draft",
+      status: send.status,
+      scheduled_at: send.scheduled_at,
       segment: { status: "subscribed" },
     })
     .select("id")
@@ -116,7 +140,7 @@ Return the email as JSON matching the provided schema.`,
     return { ok: false as const, error: error.message };
   }
 
-  return { ok: true as const, id: inserted?.id, subject: email.subject };
+  return { ok: true as const, id: inserted?.id, subject: email.subject, status: send.status };
 }
 
 function describeDiscount(d: Discount): string {
@@ -206,6 +230,17 @@ Keep it warm, skimmable, and short. Return the email as JSON matching the schema
   }
   const email = JSON.parse(textBlock.text) as GeneratedEmail;
 
+  // Draft for review, or auto-scheduled when auto-send is on (reuses the
+  // settings row already loaded above).
+  const send: { status: "draft" | "scheduled"; scheduled_at: string | null } = settings?.auto_send
+    ? {
+        status: "scheduled",
+        scheduled_at: new Date(
+          Date.now() + Math.max(0, Number(settings.auto_send_delay_minutes ?? 120)) * 60_000,
+        ).toISOString(),
+      }
+    : { status: "draft", scheduled_at: null };
+
   const { data: inserted, error } = await db
     .from("email_campaigns")
     .insert({
@@ -214,12 +249,13 @@ Keep it warm, skimmable, and short. Return the email as JSON matching the schema
       preheader: email.preheader,
       from_name: "Claudette's Cookies",
       body_markdown: email.body_markdown,
-      status: "draft",
+      status: send.status,
+      scheduled_at: send.scheduled_at,
       segment: { status: "subscribed" },
     })
     .select("id")
     .single();
 
   if (error) return { ok: false as const, error: error.message };
-  return { ok: true as const, id: inserted?.id, subject: email.subject };
+  return { ok: true as const, id: inserted?.id, subject: email.subject, status: send.status };
 }
