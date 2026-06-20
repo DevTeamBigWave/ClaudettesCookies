@@ -107,6 +107,12 @@ export function trackBeginCheckout(items: AnalyticsItem[], valueCents: number) {
   });
 }
 
+/** Email capture / soft conversion — lets ads optimize toward lead capture. */
+export function trackLead(source: string) {
+  gtag("event", "generate_lead", { currency: "USD", value: 0, lead_source: source });
+  fbq("track", "Lead", { content_name: source });
+}
+
 export interface PurchasePayload {
   transactionId: string;
   valueCents: number;
