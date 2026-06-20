@@ -17,6 +17,7 @@ import { getStripe, STRIPE_PUBLISHABLE_KEY } from "@/lib/stripe-client";
 import { FREE_SHIPPING_THRESHOLD_CENTS } from "@/lib/pricing";
 import { formatMoney } from "@/lib/utils";
 import { trackBeginCheckout } from "@/lib/analytics";
+import { getAttribution } from "@/lib/attribution";
 
 type Rate = {
   id: string;
@@ -222,6 +223,9 @@ export default function CheckoutPage() {
                 rateId: selectedRateId ?? undefined,
               }),
           items: itemsPayload,
+          // Where this visitor came from, so the order can be attributed to a
+          // source (Facebook, Google, …) in the admin dashboard.
+          attribution: getAttribution(),
         }),
       });
       const data = (await res.json().catch(() => ({}))) as {

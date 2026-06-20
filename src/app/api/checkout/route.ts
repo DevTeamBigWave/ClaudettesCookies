@@ -41,6 +41,15 @@ const Body = z.object({
   // matches this so the billed amount can't be tampered with; cheapest if absent.
   rateId: z.string().trim().max(80).optional(),
   discountCode: z.string().trim().min(1).max(40).optional(),
+  // First-party attribution captured in the browser (utm tags + referrer host).
+  attribution: z
+    .object({
+      utmSource: z.string().trim().max(120).optional(),
+      utmMedium: z.string().trim().max(120).optional(),
+      utmCampaign: z.string().trim().max(160).optional(),
+      referrerHost: z.string().trim().max(255).optional(),
+    })
+    .optional(),
   items: z
     .array(
       z.object({
@@ -60,7 +69,7 @@ export async function POST(req: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
-  const { email, phone, items, discountCode, pickup, address, rateId } = parsed.data;
+  const { email, phone, items, discountCode, pickup, address, rateId, attribution } = parsed.data;
   if (!pickup && !address) {
     return NextResponse.json({ error: "A shipping address is required." }, { status: 400 });
   }
@@ -246,6 +255,21 @@ export async function POST(req: Request) {
       .update({ fulfillment_type: "pickup" })
       .eq("id", order.id);
     if (pickupErr) console.error("Could not set fulfillment_type (run migration 0013):", pickupErr.message);
+  }
+
+  // Stamp attribution with a separate, tolerant update so a not-yet-migrated
+  // analytics column (migration 0014) can never break order creation.
+  if (attribution && (attribution.utmSource || attribution.referrerHost)) {
+    const { error: attribErr } = await db
+      .from("orders")
+      .update({
+        utm_source: attribution.utmSource ?? null,
+        utm_medium: attribution.utmMedium ?? null,
+        utm_campaign: attribution.utmCampaign ?? null,
+        referrer_host: attribution.referrerHost ?? null,
+      })
+      .eq("id", order.id);
+    if (attribErr) console.error("Could not set attribution (run migration 0014):", attribErr.message);
   }
 
   await db.from("order_items").insert(

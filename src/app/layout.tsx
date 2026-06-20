@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
 import { Analytics } from "@/components/analytics/analytics";
+import { SiteAnalytics } from "@/components/analytics/site-analytics";
 
 // Mabry — neo-grotesque body face (brand primary text).
 const sans = localFont({
@@ -58,6 +59,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={`${sans.variable} ${display.variable} ${deco.variable}`}>
       <body>{children}</body>
       <Analytics />
+      <SiteAnalytics />
     </html>
   );
 }
