@@ -3,6 +3,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { CookiesBeforeChemistry } from "@/components/shop/cookies-before-chemistry";
+import { CredibilityBand } from "@/components/shop/credibility-band";
+import { Testimonials } from "@/components/shop/testimonials";
 import { ProductCard } from "@/components/shop/product-card";
 import { getActiveProducts, getFeaturedProducts } from "@/lib/data/products";
 import { formatMoney } from "@/lib/utils";
@@ -94,6 +96,9 @@ export default async function HomePage() {
         </div>
       </section>
 
+      {/* Credibility — real heritage, the strongest honest social proof */}
+      <CredibilityBand />
+
       {/* Catalog */}
       <section className="container py-16">
         <div className="mb-8 flex items-end justify-between">
@@ -111,6 +116,9 @@ export default async function HomePage() {
           ))}
         </div>
       </section>
+
+      {/* Customer testimonials — renders only once real reviews are added */}
+      <Testimonials />
 
       {/* Editorial band */}
       <section className="container pb-16">

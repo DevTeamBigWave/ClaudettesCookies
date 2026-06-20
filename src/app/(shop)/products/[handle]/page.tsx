@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { AddToCart } from "@/components/shop/add-to-cart";
 import { BuildYourOwn } from "@/components/shop/build-your-own";
+import { Guarantee } from "@/components/shop/guarantee";
 import { JsonLd } from "@/components/seo/json-ld";
 import { productSchema, breadcrumbSchema } from "@/lib/seo";
 import {
@@ -137,6 +138,7 @@ export default async function ProductPage({ params }: Params) {
           <p className="mt-3 text-center text-xs text-muted-foreground">
             Free shipping on orders over {formatMoney(5000)} · Baked to order
           </p>
+          <Guarantee className="mt-4" />
         </div>
       </div>
     </div>

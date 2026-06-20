@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { OrderSummary } from "@/components/shop/order-summary";
+import { Guarantee } from "@/components/shop/guarantee";
 import { useCart, type OrderBreakdown } from "@/store/cart";
 import { getStripe, STRIPE_PUBLISHABLE_KEY } from "@/lib/stripe-client";
 import { FREE_SHIPPING_THRESHOLD_CENTS } from "@/lib/pricing";
@@ -638,6 +639,7 @@ function PaymentArea(props: {
           {paying ? "Processing…" : `Pay ${totalLabel}`.trim()}
         </Button>
         <p className="mt-3 text-center text-xs text-muted-foreground">Secure checkout powered by Stripe.</p>
+        <Guarantee variant="row" className="mt-6" />
       </div>
     </div>
   );
