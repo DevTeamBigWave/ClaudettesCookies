@@ -73,6 +73,15 @@ const serverSchema = z.object({
   GOOGLE_OAUTH_REFRESH_TOKEN: z.string().min(1).optional(),
   GOOGLE_CALENDAR_ID: z.string().min(1).default("primary"),
   ADMIN_EMAILS: z.string().default(""),
+  // Analytics & ad-conversion tags. All optional and inlined into the client
+  // bundle (NEXT_PUBLIC_*). When unset, the storefront ships zero analytics
+  // weight. GA4 = web analytics; GOOGLE_ADS_ID (`AW-…`) + PURCHASE_LABEL
+  // (`AW-…/label`) optimize paid campaigns toward buyers; META_PIXEL_ID drives
+  // Facebook/Instagram ad optimization and retargeting.
+  NEXT_PUBLIC_GA_MEASUREMENT_ID: z.string().optional(),
+  NEXT_PUBLIC_GOOGLE_ADS_ID: z.string().optional(),
+  NEXT_PUBLIC_GOOGLE_ADS_PURCHASE_LABEL: z.string().optional(),
+  NEXT_PUBLIC_META_PIXEL_ID: z.string().optional(),
 });
 
 const clientSchema = serverSchema.pick({
@@ -80,6 +89,10 @@ const clientSchema = serverSchema.pick({
   NEXT_PUBLIC_SUPABASE_URL: true,
   NEXT_PUBLIC_SUPABASE_ANON_KEY: true,
   NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: true,
+  NEXT_PUBLIC_GA_MEASUREMENT_ID: true,
+  NEXT_PUBLIC_GOOGLE_ADS_ID: true,
+  NEXT_PUBLIC_GOOGLE_ADS_PURCHASE_LABEL: true,
+  NEXT_PUBLIC_META_PIXEL_ID: true,
 });
 
 const isServer = typeof window === "undefined";

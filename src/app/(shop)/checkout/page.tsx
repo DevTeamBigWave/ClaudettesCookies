@@ -15,6 +15,7 @@ import { useCart, type OrderBreakdown } from "@/store/cart";
 import { getStripe, STRIPE_PUBLISHABLE_KEY } from "@/lib/stripe-client";
 import { FREE_SHIPPING_THRESHOLD_CENTS } from "@/lib/pricing";
 import { formatMoney } from "@/lib/utils";
+import { trackBeginCheckout } from "@/lib/analytics";
 
 type Rate = {
   id: string;
@@ -62,6 +63,24 @@ export default function CheckoutPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => setMounted(true), []);
+
+  // Fire begin_checkout once, after mount, when the cart actually has items.
+  const beganCheckout = useRef(false);
+  useEffect(() => {
+    if (beganCheckout.current || lines.length === 0) return;
+    beganCheckout.current = true;
+    trackBeginCheckout(
+      lines.map((l) => ({
+        item_id: l.variantId,
+        item_name: l.title,
+        item_variant: l.variantTitle || undefined,
+        price: l.unitPriceCents / 100,
+        quantity: l.quantity,
+      })),
+      subtotalCents(),
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lines.length]);
 
   const sub = subtotalCents();
   const appliedDiscountCents = promoApplied?.discountCents ?? 0;
