@@ -23,6 +23,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "/blog",
     "/about",
     "/clean-label",
+    "/returns",
+    "/privacy",
+    "/terms",
     ...COLLECTIONS.map((c) => `/collections/${c.slug}`),
   ].map((path) => ({
     url: `${base}${path}`,

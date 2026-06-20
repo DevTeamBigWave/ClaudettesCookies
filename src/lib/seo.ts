@@ -28,9 +28,9 @@ export function organizationSchema() {
       email: "hello@claudettescookies.shop",
       availableLanguage: "English",
     },
-    // Add real profile URLs here (Instagram, TikTok, Facebook) to feed Google's
-    // brand Knowledge Panel and unify the entity. Left empty rather than guessed.
-    // sameAs: ["https://instagram.com/...", "https://tiktok.com/@..."],
+    // Real profile URLs feed Google's brand Knowledge Panel and unify the
+    // entity. Add TikTok/Facebook here as those accounts come online.
+    sameAs: ["https://www.instagram.com/claudettescookies"],
   };
 }
 

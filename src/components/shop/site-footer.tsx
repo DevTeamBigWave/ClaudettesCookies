@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Instagram } from "lucide-react";
 import { NewsletterForm } from "./newsletter-form";
 
 export function SiteFooter() {
@@ -15,6 +16,15 @@ export function SiteFooter() {
             <p className="mb-2 text-sm font-semibold">Get 10% off your first box</p>
             <NewsletterForm source="footer" />
           </div>
+          <a
+            href="https://www.instagram.com/claudettescookies"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-6 inline-flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-primary"
+          >
+            <Instagram className="size-4" />
+            @claudettescookies
+          </a>
         </div>
 
         <div>
@@ -31,6 +41,9 @@ export function SiteFooter() {
           <p className="mb-3 text-sm font-semibold">Company</p>
           <ul className="space-y-2 text-sm text-muted-foreground">
             <li><Link href="/about" className="hover:text-primary">Our Story</Link></li>
+            <li><Link href="/returns" className="hover:text-primary">Returns &amp; Guarantee</Link></li>
+            <li><Link href="/privacy" className="hover:text-primary">Privacy Policy</Link></li>
+            <li><Link href="/terms" className="hover:text-primary">Terms of Service</Link></li>
             <li><a href="mailto:hello@claudettescookies.shop" className="hover:text-primary">Contact</a></li>
           </ul>
         </div>
