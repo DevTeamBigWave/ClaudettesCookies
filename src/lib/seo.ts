@@ -21,6 +21,16 @@ export function organizationSchema() {
     logo: LOGO,
     description:
       "Small-batch cookies baked with grass-fed butter, organic flour, and no seed oils — shipped nationwide.",
+    email: "hello@claudettescookies.shop",
+    contactPoint: {
+      "@type": "ContactPoint",
+      contactType: "Customer Support",
+      email: "hello@claudettescookies.shop",
+      availableLanguage: "English",
+    },
+    // Add real profile URLs here (Instagram, TikTok, Facebook) to feed Google's
+    // brand Knowledge Panel and unify the entity. Left empty rather than guessed.
+    // sameAs: ["https://instagram.com/...", "https://tiktok.com/@..."],
   };
 }
 

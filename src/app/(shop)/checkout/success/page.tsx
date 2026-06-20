@@ -3,7 +3,10 @@ import { CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { OrderConfirmation } from "@/components/shop/order-confirmation";
 
-export const metadata = { title: "Order confirmed" };
+export const metadata = {
+  title: "Order confirmed",
+  robots: { index: false, follow: true },
+};
 
 export default async function SuccessPage({
   searchParams,

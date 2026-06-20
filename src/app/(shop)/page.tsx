@@ -10,7 +10,17 @@ import { getActiveProducts, getFeaturedProducts } from "@/lib/data/products";
 import { formatMoney } from "@/lib/utils";
 
 export const metadata: Metadata = {
+  title: "Claudette's Cookies — No Seed Oils. Just Butter.",
+  description:
+    "Small-batch cookies baked with grass-fed butter, organic flour, and zero seed oils — Moroccan-inspired flavors, baked to order and shipped nationwide. Every box is six cookies for $45.",
   alternates: { canonical: "/" },
+  openGraph: {
+    type: "website",
+    title: "Claudette's Cookies — No Seed Oils. Just Butter.",
+    description:
+      "Moroccan-inspired flavors, baked with grass-fed butter and organic flour. Baked to order, shipped nationwide. Everybody eats.",
+    images: [{ url: "/brand/og-default.jpg", width: 1200, height: 630, alt: "Claudette's Cookies" }],
+  },
 };
 
 export const revalidate = 300; // ISR: refresh catalog every 5 min
