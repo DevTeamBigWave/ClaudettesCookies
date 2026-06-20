@@ -16,9 +16,18 @@ function topBy<T>(rows: T[], label: (row: T) => string, n: number): { label: str
     .slice(0, n);
 }
 
-/** Human label for where an order/visit came from. */
-function sourceLabel(row: { utm_source?: string | null; referrer_host?: string | null }): string {
-  return row.utm_source?.trim() || row.referrer_host?.trim() || "Direct";
+/** Human label for where an order/visit came from, as "source / medium". */
+function sourceLabel(row: {
+  utm_source?: string | null;
+  utm_medium?: string | null;
+  referrer_host?: string | null;
+}): string {
+  const src = row.utm_source?.trim();
+  if (src) {
+    const med = row.utm_medium?.trim();
+    return med ? `${src} / ${med}` : src;
+  }
+  return row.referrer_host?.trim() || "Direct";
 }
 
 export default async function AdminDashboard() {
@@ -47,12 +56,12 @@ export default async function AdminDashboard() {
   const [{ data: views, error: viewsErr }, { data: attributed, error: attribErr }] = await Promise.all([
     db
       .from("page_views")
-      .select("path, visitor_id, utm_source, referrer_host")
+      .select("path, visitor_id, utm_source, utm_medium, referrer_host")
       .gte("created_at", since30)
       .limit(100000),
     db
       .from("orders")
-      .select("total_cents, utm_source, referrer_host")
+      .select("total_cents, utm_source, utm_medium, referrer_host")
       .eq("status", "paid")
       .gte("created_at", since30),
   ]);
