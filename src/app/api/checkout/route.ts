@@ -3,15 +3,10 @@ import type Stripe from "stripe";
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { stripe } from "@/lib/stripe";
-import {
-  isDiscountValid,
-  priceCart,
-  qualifiesForFreeShipping,
-  type PricedLine,
-} from "@/lib/pricing";
+import { priceCart, qualifiesForFreeShipping, type PricedLine } from "@/lib/pricing";
 import { resolveRate, type CheckoutRate } from "@/lib/live-shipping";
+import { resolveDiscount } from "@/lib/discounts";
 import { BUILD_YOUR_OWN_HANDLE, BOX_SIZE } from "@/lib/data/products";
-import type { Discount } from "@/types/db";
 
 export const runtime = "nodejs";
 
@@ -153,34 +148,15 @@ export async function POST(req: Request) {
     });
   }
 
-  // 2) Validate the discount code (if any) against the DB.
-  let discount: Discount | null = null;
-  if (discountCode) {
-    const { data: d } = await db
-      .from("discounts")
-      .select("*")
-      .eq("code", discountCode.toUpperCase())
-      .maybeSingle();
-    const subtotal = priced.reduce((s, l) => s + l.totalCents, 0);
-    if (d && isDiscountValid(d as Discount, subtotal)) discount = d as Discount;
-    else if (discountCode) {
-      return NextResponse.json({ error: "That code isn't valid for this order." }, { status: 422 });
-    }
+  // 2) Validate the discount code (if any). Shared with the promo-preview route
+  //    so the quoted discount and the charged discount always agree (active,
+  //    min-subtotal, and once-per-customer are all enforced in resolveDiscount).
+  const subtotal = priced.reduce((s, l) => s + l.totalCents, 0);
+  const resolved = await resolveDiscount(db, discountCode, subtotal, email);
+  if (resolved.error) {
+    return NextResponse.json({ error: resolved.error }, { status: 422 });
   }
-
-  // Enforce once-per-customer: reject if this email already redeemed the code
-  // on a paid/fulfilled order. Only checkable when we already know the email.
-  if (discount?.once_per_customer && email) {
-    const { count } = await db
-      .from("orders")
-      .select("id", { count: "exact", head: true })
-      .eq("email", email)
-      .eq("discount_id", discount.id)
-      .in("status", ["paid", "fulfilled"]);
-    if ((count ?? 0) > 0) {
-      return NextResponse.json({ error: "You've already used that code." }, { status: 422 });
-    }
-  }
+  const discount = resolved.discount;
 
   // Resolve shipping server-side. For ship orders, re-quote the live rate the
   // customer selected (so the billed amount can't be tampered with); pickup is
@@ -351,6 +327,14 @@ export async function POST(req: Request) {
   return NextResponse.json({
     clientSecret: session.client_secret,
     orderNumber: order.order_number,
+    // Server-computed breakdown so the payment step + confirmation can show the
+    // discount the customer is actually charged (not a client-side guess).
+    breakdown: {
+      subtotalCents: cart.subtotalCents,
+      discountCents: cart.discountCents,
+      shippingCents: cart.shippingCents,
+      totalCents: cart.totalCents,
+    },
   });
 }
 

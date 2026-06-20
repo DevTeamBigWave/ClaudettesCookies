@@ -35,8 +35,32 @@ export function lineKey(line: { variantId: string; composition?: BoxPick[] }): s
   return `${line.variantId}:${sig}`;
 }
 
+/** Itemized totals for an order — shown at checkout, payment, and confirmation. */
+export interface OrderBreakdown {
+  subtotalCents: number;
+  discountCents: number;
+  shippingCents: number;
+  totalCents: number;
+}
+
+/** Snapshot of a just-placed order, stashed so the success page can show the
+ *  breakdown even though the cart is cleared on arrival. */
+export interface LastOrder {
+  orderNumber: number | null;
+  pickup: boolean;
+  items: { title: string; variantTitle: string; quantity: number; totalCents: number }[];
+  breakdown: OrderBreakdown;
+}
+
 interface CartState {
   lines: CartLine[];
+  /** Promo code, persisted so a crash / re-render / navigation can't wipe it. */
+  promoCode: string;
+  setPromoCode: (code: string) => void;
+  /** Last placed order, for the confirmation page (read once, then cleared). */
+  lastOrder: LastOrder | null;
+  setLastOrder: (order: LastOrder) => void;
+  clearLastOrder: () => void;
   add: (line: Omit<CartLine, "quantity" | "key">, qty?: number) => void;
   remove: (key: string) => void;
   setQty: (key: string, qty: number) => void;
@@ -54,6 +78,11 @@ export const useCart = create<CartState>()(
   persist(
     (set, get) => ({
       lines: [],
+      promoCode: "",
+      setPromoCode: (code) => set({ promoCode: code }),
+      lastOrder: null,
+      setLastOrder: (order) => set({ lastOrder: order }),
+      clearLastOrder: () => set({ lastOrder: null }),
       add: (line, qty = 1) =>
         set((state) => {
           const key = lineKey(line);
@@ -75,7 +104,9 @@ export const useCart = create<CartState>()(
               ? state.lines.filter((l) => l.key !== key)
               : state.lines.map((l) => (l.key === key ? { ...l, quantity: qty } : l)),
         })),
-      clear: () => set({ lines: [] }),
+      // A completed/emptied cart also drops the promo so it can't bleed into a
+      // later, unrelated order. The lastOrder snapshot is cleared separately.
+      clear: () => set({ lines: [], promoCode: "" }),
       count: () => get().lines.reduce((n, l) => n + l.quantity, 0),
       subtotalCents: () =>
         get().lines.reduce((sum, l) => sum + l.unitPriceCents * l.quantity, 0),

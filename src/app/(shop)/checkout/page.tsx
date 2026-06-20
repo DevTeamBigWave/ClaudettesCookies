@@ -10,7 +10,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
-import { useCart } from "@/store/cart";
+import { OrderSummary } from "@/components/shop/order-summary";
+import { useCart, type OrderBreakdown } from "@/store/cart";
 import { getStripe, STRIPE_PUBLISHABLE_KEY } from "@/lib/stripe-client";
 import { FREE_SHIPPING_THRESHOLD_CENTS } from "@/lib/pricing";
 import { formatMoney } from "@/lib/utils";
@@ -35,14 +36,20 @@ type Address = {
 const EMPTY_ADDRESS: Address = { name: "", line1: "", line2: "", city: "", state: "", postalCode: "" };
 
 export default function CheckoutPage() {
-  const { lines, subtotalCents } = useCart();
+  const { lines, subtotalCents, promoCode, setPromoCode, setLastOrder } = useCart();
   const [mounted, setMounted] = useState(false);
 
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
-  const [promo, setPromo] = useState("");
   const [pickup, setPickup] = useState(false);
   const [address, setAddress] = useState<Address>(EMPTY_ADDRESS);
+
+  // Applied promo (validated server-side) + its inline feedback.
+  const [promoApplied, setPromoApplied] = useState<{ code: string; discountCents: number } | null>(null);
+  const [promoMsg, setPromoMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [promoLoading, setPromoLoading] = useState(false);
+  // Server-computed breakdown returned when the payment session is created.
+  const [breakdown, setBreakdown] = useState<OrderBreakdown | null>(null);
 
   // Live shipping rates for the typed address (fetched on demand).
   const [rates, setRates] = useState<Rate[] | null>(null);
@@ -57,7 +64,9 @@ export default function CheckoutPage() {
   useEffect(() => setMounted(true), []);
 
   const sub = subtotalCents();
-  const freeShipping = sub >= FREE_SHIPPING_THRESHOLD_CENTS;
+  const appliedDiscountCents = promoApplied?.discountCents ?? 0;
+  // Free shipping is judged after the discount, matching the server's priceCart.
+  const freeShipping = sub - appliedDiscountCents >= FREE_SHIPPING_THRESHOLD_CENTS;
 
   const emailValid = /\S+@\S+\.\S+/.test(email);
   const phoneValid = phone.replace(/\D/g, "").length >= 10;
@@ -83,6 +92,52 @@ export default function CheckoutPage() {
     setRates(null);
     setSelectedRateId(null);
   }, [address.line1, address.line2, address.city, address.state, address.postalCode, pickup]);
+
+  // Editing the cart invalidates a previously applied promo (must re-validate).
+  useEffect(() => {
+    setPromoApplied(null);
+    setPromoMsg(null);
+  }, [sub]);
+
+  async function applyPromo() {
+    const code = promoCode.trim();
+    if (!code) {
+      setPromoApplied(null);
+      setPromoMsg(null);
+      return;
+    }
+    setPromoLoading(true);
+    setPromoMsg(null);
+    try {
+      const res = await fetch("/api/checkout/promo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code,
+          email: emailValid ? email : undefined,
+          items: itemsPayload.map((i) => ({ variantId: i.variantId, quantity: i.quantity })),
+        }),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        valid?: boolean;
+        code?: string;
+        discountCents?: number;
+        message?: string;
+      };
+      if (data.valid) {
+        setPromoApplied({ code: data.code ?? code, discountCents: data.discountCents ?? 0 });
+        setPromoMsg({ ok: true, text: data.message ?? "Applied" });
+      } else {
+        setPromoApplied(null);
+        setPromoMsg({ ok: false, text: data.message ?? "That code isn't valid for this order." });
+      }
+    } catch {
+      setPromoApplied(null);
+      setPromoMsg({ ok: false, text: "Couldn't check that code — try again." });
+    } finally {
+      setPromoLoading(false);
+    }
+  }
 
   function update(field: keyof Address, value: string) {
     setAddress((a) => ({ ...a, [field]: field === "state" ? value.toUpperCase().slice(0, 2) : value }));
@@ -132,7 +187,7 @@ export default function CheckoutPage() {
           email: emailValid ? email : undefined,
           phone: phoneValid ? phone : undefined,
           pickup,
-          discountCode: promo || undefined,
+          discountCode: promoCode || undefined,
           ...(pickup
             ? {}
             : {
@@ -152,12 +207,29 @@ export default function CheckoutPage() {
       const data = (await res.json().catch(() => ({}))) as {
         clientSecret?: string;
         orderNumber?: number;
+        breakdown?: OrderBreakdown;
         error?: string;
       };
       if (!res.ok) throw new Error(data.error ?? `Checkout failed (${res.status})`);
       if (!data.clientSecret) throw new Error("Could not start checkout.");
+      setBreakdown(data.breakdown ?? null);
       setClientSecret(data.clientSecret);
       setOrderNumber(data.orderNumber ?? null);
+      // Snapshot the order so the confirmation page can show the breakdown after
+      // the cart is cleared on redirect.
+      if (data.breakdown) {
+        setLastOrder({
+          orderNumber: data.orderNumber ?? null,
+          pickup,
+          items: lines.map((l) => ({
+            title: l.title,
+            variantTitle: l.variantTitle,
+            quantity: l.quantity,
+            totalCents: l.unitPriceCents * l.quantity,
+          })),
+          breakdown: data.breakdown,
+        });
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not start checkout");
     } finally {
@@ -252,7 +324,7 @@ export default function CheckoutPage() {
               elementsOptions: { appearance: { theme: "stripe", variables: { borderRadius: "12px" } } },
             }}
           >
-            <PaymentArea pickup={pickup} orderNumber={orderNumber} phone={phone} />
+            <PaymentArea pickup={pickup} orderNumber={orderNumber} phone={phone} breakdown={breakdown} />
           </CheckoutElementsProvider>
         </ErrorBoundary>
       </div>
@@ -266,6 +338,14 @@ export default function CheckoutPage() {
   const canContinue = pickup
     ? contactReady
     : contactReady && addressComplete && (freeShipping || (showRates && Boolean(selectedRateId)));
+
+  // Live preview totals for the order summary (shipping is null until quoted).
+  const selectedRate = rates?.find((r) => r.id === selectedRateId) ?? null;
+  const previewShippingCents: number | null = pickup || freeShipping ? 0 : selectedRate?.amountCents ?? null;
+  const previewTotalCents: number | null =
+    previewShippingCents === null
+      ? null
+      : Math.max(0, sub - appliedDiscountCents) + previewShippingCents;
 
   return (
     <div className="container max-w-2xl space-y-6 py-14">
@@ -294,10 +374,13 @@ export default function CheckoutPage() {
 
       {/* Contact */}
       <section className="space-y-3 rounded-2xl border border-border bg-card p-6">
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-muted-foreground">Subtotal</span>
-          <span className="font-medium">{formatMoney(sub)}</span>
-        </div>
+        <OrderSummary
+          subtotalCents={sub}
+          discountCents={appliedDiscountCents}
+          shippingCents={previewShippingCents}
+          totalCents={previewTotalCents}
+          discountCode={promoApplied?.code}
+        />
         <div className="space-y-2">
           <label className="block text-sm font-medium">Email</label>
           <Input type="email" placeholder="you@email.com" value={email} onChange={(e) => setEmail(e.target.value)} />
@@ -319,8 +402,31 @@ export default function CheckoutPage() {
         <div className="space-y-2">
           <label className="block text-sm font-medium">Promo code</label>
           <div className="flex gap-2">
-            <Input placeholder="WELCOME10" value={promo} onChange={(e) => setPromo(e.target.value.toUpperCase())} />
+            <Input
+              placeholder="WELCOME10"
+              value={promoCode}
+              onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  applyPromo();
+                }
+              }}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              disabled={!promoCode.trim() || promoLoading}
+              onClick={applyPromo}
+            >
+              {promoLoading ? "Checking…" : "Apply"}
+            </Button>
           </div>
+          {promoMsg && (
+            <p className={`text-xs ${promoMsg.ok ? "text-primary" : "text-destructive"}`}>
+              {promoMsg.text}
+            </p>
+          )}
         </div>
       </section>
 
@@ -416,6 +522,7 @@ function PaymentArea(props: {
   pickup: boolean;
   orderNumber: number | null;
   phone: string;
+  breakdown: OrderBreakdown | null;
 }) {
   const result = useCheckoutElements();
   const co = result.type === "success" ? result.checkout : null;
@@ -492,10 +599,21 @@ function PaymentArea(props: {
       </section>
 
       <div className="rounded-2xl border border-border bg-card p-6">
-        <div className="mb-4 flex items-center justify-between text-base">
-          <span className="font-semibold">Total</span>
-          <span className="font-semibold">{totalLabel}</span>
-        </div>
+        {props.breakdown ? (
+          <div className="mb-4">
+            <OrderSummary
+              subtotalCents={props.breakdown.subtotalCents}
+              discountCents={props.breakdown.discountCents}
+              shippingCents={props.breakdown.shippingCents}
+              totalCents={props.breakdown.totalCents}
+            />
+          </div>
+        ) : (
+          <div className="mb-4 flex items-center justify-between text-base">
+            <span className="font-semibold">Total</span>
+            <span className="font-semibold">{totalLabel}</span>
+          </div>
+        )}
         {payError && <p className="mb-3 text-sm text-destructive">{payError}</p>}
         <Button className="w-full" size="lg" onClick={pay} disabled={!canPay}>
           {paying ? "Processing…" : `Pay ${totalLabel}`.trim()}
