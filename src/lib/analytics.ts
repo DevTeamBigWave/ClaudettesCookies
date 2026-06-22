@@ -16,7 +16,7 @@
 // Read as static references so Next can inline them client-side. The live IDs
 // are baked in as defaults (they're public, non-secret client ids) so the tags
 // work on deploy without extra env config; env vars still override.
-export const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID || "G-TT1GJWPMXH";
+export const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID || "G-XLNBW3HDQZ";
 export const GOOGLE_ADS_ID = process.env.NEXT_PUBLIC_GOOGLE_ADS_ID || "AW-18263863816";
 // Google Ads conversion label for the "purchase" action, formatted as the
 // `send_to` value: `AW-XXXXXXXXX/AbC-dEfGhIjK`.
