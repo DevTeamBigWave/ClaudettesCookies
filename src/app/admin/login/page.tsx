@@ -42,6 +42,14 @@ function AdminLogin() {
   const params = useSearchParams();
   const forbidden = params.get("error") === "forbidden";
 
+  // Always send the auth redirect to the canonical site URL, never the current
+  // origin. Otherwise opening admin from a stale `localhost` bookmark bakes
+  // localhost into the magic-link / OAuth redirect and sign-in bounces to a
+  // host the phone can't reach. Falls back to the live domain if env is unset.
+  const authBase =
+    process.env.NEXT_PUBLIC_SITE_URL || "https://www.claudettescookies.shop";
+  const redirectTo = `${authBase}/auth/callback?next=/admin`;
+
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -54,7 +62,7 @@ function AdminLogin() {
     const supabase = createClient();
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${window.location.origin}/auth/callback?next=/admin` },
+      options: { redirectTo },
     });
     // On success the browser is redirected to Google; we only reach here on error.
     if (error) {
@@ -70,7 +78,7 @@ function AdminLogin() {
     const supabase = createClient();
     const { error } = await supabase.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: `${window.location.origin}/auth/callback?next=/admin` },
+      options: { emailRedirectTo: redirectTo },
     });
     setLoading(false);
     if (error) setError(error.message);

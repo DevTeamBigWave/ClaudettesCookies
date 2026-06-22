@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { adminEmails } from "@/lib/env";
+import { adminEmails, env } from "@/lib/env";
 
 export const runtime = "nodejs";
 
@@ -31,5 +31,9 @@ export async function GET(req: Request) {
     }
   }
 
-  return NextResponse.redirect(new URL(next, url.origin));
+  // Redirect off the canonical site URL, not the request origin: behind
+  // Railway's proxy the request origin is the internal `localhost:8080`, which
+  // would send the just-signed-in user to an unreachable host.
+  const base = env.NEXT_PUBLIC_SITE_URL || url.origin;
+  return NextResponse.redirect(new URL(next, base));
 }
