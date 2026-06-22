@@ -31,9 +31,13 @@ export async function GET(req: Request) {
     }
   }
 
-  // Redirect off the canonical site URL, not the request origin: behind
-  // Railway's proxy the request origin is the internal `localhost:8080`, which
-  // would send the just-signed-in user to an unreachable host.
-  const base = env.NEXT_PUBLIC_SITE_URL || url.origin;
+  // Stay on the SAME public host the browser used (apex or www) so the session
+  // cookie just set during the code exchange is sent back on this redirect — a
+  // cross-host bounce (e.g. apex → www) drops the cookie and loops sign-in.
+  // Behind Railway's proxy `req.url` is the internal localhost:8080, so derive
+  // the real host from the forwarded headers; fall back to the canonical URL.
+  const fwdHost = req.headers.get("x-forwarded-host") ?? req.headers.get("host");
+  const fwdProto = req.headers.get("x-forwarded-proto") ?? "https";
+  const base = fwdHost ? `${fwdProto}://${fwdHost}` : env.NEXT_PUBLIC_SITE_URL || url.origin;
   return NextResponse.redirect(new URL(next, base));
 }

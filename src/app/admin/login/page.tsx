@@ -42,13 +42,13 @@ function AdminLogin() {
   const params = useSearchParams();
   const forbidden = params.get("error") === "forbidden";
 
-  // Always send the auth redirect to the canonical site URL, never the current
-  // origin. Otherwise opening admin from a stale `localhost` bookmark bakes
-  // localhost into the magic-link / OAuth redirect and sign-in bounces to a
-  // host the phone can't reach. Falls back to the live domain if env is unset.
-  const authBase =
-    process.env.NEXT_PUBLIC_SITE_URL || "https://www.claudettescookies.shop";
-  const redirectTo = `${authBase}/auth/callback?next=/admin`;
+  // Build the auth redirect from the CURRENT origin at click time. The PKCE
+  // verifier is stored on whatever origin starts the flow, so the callback must
+  // land on that same origin to read it — pinning to a fixed host (e.g. www when
+  // the browser is on the apex) breaks the handshake and loops sign-in.
+  function authRedirect() {
+    return `${window.location.origin}/auth/callback?next=/admin`;
+  }
 
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
@@ -62,7 +62,7 @@ function AdminLogin() {
     const supabase = createClient();
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo },
+      options: { redirectTo: authRedirect() },
     });
     // On success the browser is redirected to Google; we only reach here on error.
     if (error) {
@@ -78,7 +78,7 @@ function AdminLogin() {
     const supabase = createClient();
     const { error } = await supabase.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: redirectTo },
+      options: { emailRedirectTo: authRedirect() },
     });
     setLoading(false);
     if (error) setError(error.message);
