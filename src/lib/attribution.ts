@@ -20,6 +20,8 @@ export interface Attribution {
   utmMedium?: string;
   utmCampaign?: string;
   referrerHost?: string;
+  /** Google Ads click id — persisted so it survives the off-site Stripe redirect. */
+  gclid?: string;
 }
 
 function safeGet(key: string): string | null {
@@ -68,20 +70,25 @@ export function externalReferrerHost(): string | null {
 export function captureAttribution(): Attribution {
   const params = new URLSearchParams(window.location.search);
   const utmSource = params.get("utm_source") ?? undefined;
+  const gclid = params.get("gclid") ?? undefined;
   const referrerHost = externalReferrerHost() ?? undefined;
 
-  if (utmSource) {
+  // A UTM-tagged hit OR a Google Ads click (gclid) is a new touch worth storing.
+  if (utmSource || gclid) {
+    const stored = getAttribution();
     const attribution: Attribution = {
       utmSource,
       utmMedium: params.get("utm_medium") ?? undefined,
       utmCampaign: params.get("utm_campaign") ?? undefined,
       referrerHost,
+      // Keep a previously stored gclid if this hit doesn't carry one.
+      gclid: gclid ?? stored.gclid,
     };
     safeSet(ATTRIB_KEY, JSON.stringify(attribution));
     return attribution;
   }
 
-  // No UTMs on this hit: keep any stored campaign, but still surface the
+  // No UTMs or gclid on this hit: keep any stored campaign, but still surface the
   // referrer host for this pageview (without overwriting stored attribution).
   const stored = getAttribution();
   return Object.keys(stored).length ? stored : referrerHost ? { referrerHost } : {};

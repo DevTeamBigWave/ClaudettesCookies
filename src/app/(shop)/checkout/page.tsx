@@ -61,6 +61,7 @@ export default function CheckoutPage() {
 
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [orderNumber, setOrderNumber] = useState<number | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -231,6 +232,7 @@ export default function CheckoutPage() {
       const data = (await res.json().catch(() => ({}))) as {
         clientSecret?: string;
         orderNumber?: number;
+        sessionId?: string;
         breakdown?: OrderBreakdown;
         error?: string;
       };
@@ -239,6 +241,7 @@ export default function CheckoutPage() {
       setBreakdown(data.breakdown ?? null);
       setClientSecret(data.clientSecret);
       setOrderNumber(data.orderNumber ?? null);
+      setSessionId(data.sessionId ?? null);
       // Snapshot the order so the confirmation page can show the breakdown after
       // the cart is cleared on redirect.
       if (data.breakdown) {
@@ -264,6 +267,7 @@ export default function CheckoutPage() {
   function editDetails() {
     setClientSecret(null);
     setOrderNumber(null);
+    setSessionId(null);
   }
 
   if (!mounted) return <div className="container max-w-2xl py-14" />;
@@ -348,7 +352,7 @@ export default function CheckoutPage() {
               elementsOptions: { appearance: { theme: "stripe", variables: { borderRadius: "12px" } } },
             }}
           >
-            <PaymentArea pickup={pickup} orderNumber={orderNumber} phone={phone} breakdown={breakdown} />
+            <PaymentArea pickup={pickup} orderNumber={orderNumber} sessionId={sessionId} phone={phone} breakdown={breakdown} />
           </CheckoutElementsProvider>
         </ErrorBoundary>
       </div>
@@ -545,6 +549,7 @@ export default function CheckoutPage() {
 function PaymentArea(props: {
   pickup: boolean;
   orderNumber: number | null;
+  sessionId: string | null;
   phone: string;
   breakdown: OrderBreakdown | null;
 }) {
@@ -587,7 +592,7 @@ function PaymentArea(props: {
 
   const returnUrl = `${window.location.origin}/checkout/success?order=${props.orderNumber ?? ""}${
     props.pickup ? "&pickup=1" : ""
-  }`;
+  }${props.sessionId ? `&session_id=${encodeURIComponent(props.sessionId)}` : ""}`;
 
   async function pay() {
     setPaying(true);

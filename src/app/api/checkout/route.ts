@@ -351,6 +351,9 @@ export async function POST(req: Request) {
   return NextResponse.json({
     clientSecret: session.client_secret,
     orderNumber: order.order_number,
+    // Threaded into the success-page return URL so the conversion can be fired
+    // from the server-verified Stripe session (custom checkout has no success_url).
+    sessionId: session.id,
     // Server-computed breakdown so the payment step + confirmation can show the
     // discount the customer is actually charged (not a client-side guess).
     breakdown: {

@@ -13,13 +13,15 @@
  * into the client bundle at build time.
  */
 
-// Read as static references so Next can inline them client-side.
-export const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID || "";
-export const GOOGLE_ADS_ID = process.env.NEXT_PUBLIC_GOOGLE_ADS_ID || "";
+// Read as static references so Next can inline them client-side. The live IDs
+// are baked in as defaults (they're public, non-secret client ids) so the tags
+// work on deploy without extra env config; env vars still override.
+export const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID || "G-TT1GJWPMXH";
+export const GOOGLE_ADS_ID = process.env.NEXT_PUBLIC_GOOGLE_ADS_ID || "AW-18263863816";
 // Google Ads conversion label for the "purchase" action, formatted as the
-// `send_to` value: `AW-XXXXXXXXX/AbC-dEfGhIjK`. Paste the full string.
+// `send_to` value: `AW-XXXXXXXXX/AbC-dEfGhIjK`.
 export const GOOGLE_ADS_PURCHASE_LABEL =
-  process.env.NEXT_PUBLIC_GOOGLE_ADS_PURCHASE_LABEL || "";
+  process.env.NEXT_PUBLIC_GOOGLE_ADS_PURCHASE_LABEL || "AW-18263863816/b5rMCKrx48McEIjk8YRE";
 export const META_PIXEL_ID = process.env.NEXT_PUBLIC_META_PIXEL_ID || "";
 
 export const hasGoogle = Boolean(GA_MEASUREMENT_ID || GOOGLE_ADS_ID);
@@ -123,30 +125,14 @@ export interface PurchasePayload {
 
 /**
  * Fire the conversion event across GA4, Google Ads, and Meta. Call exactly once
- * per order (the confirmation page guards against double-fire via the cleared
- * order snapshot). `transactionId` dedupes server- and client-side conversions.
+ * per order. Fires the Meta Pixel purchase from the cart snapshot (which carries
+ * line items). The GA4 `purchase` and Google Ads `conversion` are fired
+ * separately from the success page via `trackServerPurchase`, using the
+ * server-verified Stripe amount and payment-intent id — so they aren't fired
+ * here (doing both would double-count with mismatched transaction ids).
  */
 export function trackPurchase(p: PurchasePayload) {
   const value = toDollars(p.valueCents);
-
-  // GA4 ecommerce purchase
-  gtag("event", "purchase", {
-    transaction_id: p.transactionId,
-    currency: "USD",
-    value,
-    shipping: p.shippingCents != null ? toDollars(p.shippingCents) : undefined,
-    items: p.items,
-  });
-
-  // Google Ads conversion (optimizes paid campaigns toward buyers)
-  if (GOOGLE_ADS_PURCHASE_LABEL) {
-    gtag("event", "conversion", {
-      send_to: GOOGLE_ADS_PURCHASE_LABEL,
-      transaction_id: p.transactionId,
-      currency: "USD",
-      value,
-    });
-  }
 
   // Meta Pixel purchase. eventID lets a server-side Conversions API event with
   // the same id dedupe against this one if added later.
@@ -163,4 +149,33 @@ export function trackPurchase(p: PurchasePayload) {
     },
     { eventID: p.transactionId },
   );
+}
+
+/**
+ * Server-accurate purchase tracking, fired once on the success page from values
+ * retrieved server-side off the Stripe Checkout Session. `value` is already in
+ * dollars. Sends the Google Ads conversion (for bidding) and the GA4 purchase
+ * (for revenue/attribution); `transactionId` (the payment-intent id) dedupes
+ * both across refreshes. Optionally sets hashed-on-send user_data email for
+ * Google enhanced conversions.
+ */
+export function trackServerPurchase(p: { transactionId: string; value: number; email?: string }) {
+  // Enhanced conversions: gtag hashes the email on send when enabled in the Ads
+  // account. Set before the conversion event so it's attached.
+  if (p.email) gtag("set", "user_data", { email: p.email });
+
+  if (GOOGLE_ADS_PURCHASE_LABEL) {
+    gtag("event", "conversion", {
+      send_to: GOOGLE_ADS_PURCHASE_LABEL,
+      value: p.value,
+      currency: "USD",
+      transaction_id: p.transactionId,
+    });
+  }
+
+  gtag("event", "purchase", {
+    transaction_id: p.transactionId,
+    value: p.value,
+    currency: "USD",
+  });
 }
