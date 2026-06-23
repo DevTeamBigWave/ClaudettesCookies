@@ -62,7 +62,13 @@ function AdminLogin() {
     const supabase = createClient();
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: authRedirect() },
+      options: {
+        redirectTo: authRedirect(),
+        // Always show Google's account chooser. Without this, a device already
+        // signed into a different Google account (e.g. a personal Gmail) gets
+        // auto-selected, signs in as a non-admin, and loops back to login.
+        queryParams: { prompt: "select_account" },
+      },
     });
     // On success the browser is redirected to Google; we only reach here on error.
     if (error) {
@@ -93,7 +99,8 @@ function AdminLogin() {
 
         {forbidden && (
           <p className="mt-4 rounded-xl bg-destructive/10 p-3 text-sm text-destructive">
-            That account isn&rsquo;t authorized for the admin panel.
+            That Google account isn&rsquo;t an admin. Tap &ldquo;Continue with Google&rdquo; again
+            and choose your store account (e.g. hello@claudettescookies.shop).
           </p>
         )}
 
