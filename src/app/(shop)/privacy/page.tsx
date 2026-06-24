@@ -137,6 +137,28 @@ export default function PrivacyPage() {
         </section>
 
         <section>
+          <h2 className="font-display text-2xl font-semibold">SMS / text messaging</h2>
+          <p className="mt-3">
+            If you opt in to text messages from Claudette&rsquo;s Cookies, we use your mobile
+            number only to send the messages you signed up for &mdash; order and shipping updates
+            and, if you opted in, marketing offers.
+          </p>
+          <p className="mt-3">
+            <strong>
+              We never share or sell your mobile information or SMS consent to third parties or
+              affiliates for their own marketing or promotional purposes.
+            </strong>{" "}
+            Your opt-in to text messaging is not shared with anyone. We share your number only with
+            the messaging provider that delivers these texts, and only so they can be sent on our
+            behalf.
+          </p>
+          <p className="mt-3">
+            Message and data rates may apply. Message frequency varies. Reply <strong>STOP</strong>{" "}
+            to unsubscribe or <strong>HELP</strong> for help at any time.
+          </p>
+        </section>
+
+        <section>
           <h2 className="font-display text-2xl font-semibold">Your choices &amp; rights</h2>
           <p className="mt-3">
             Depending on where you live (for example, California or the EU/UK), you may have the

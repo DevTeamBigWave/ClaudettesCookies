@@ -109,6 +109,38 @@ export default function TermsPage() {
         </section>
 
         <section>
+          <h2 className="font-display text-2xl font-semibold">SMS / text messaging program</h2>
+          <p className="mt-3">
+            By providing your mobile number and opting in, you agree to receive recurring automated
+            marketing and order-related text messages from Claudette&rsquo;s Cookies at the number
+            provided. <strong>Consent is not a condition of any purchase.</strong>
+          </p>
+          <ul className="mt-3 list-disc space-y-2 pl-5">
+            <li><strong>Message frequency varies.</strong></li>
+            <li><strong>Message and data rates may apply.</strong></li>
+            <li>
+              For help, text <strong>HELP</strong> or email{" "}
+              <a href={`mailto:${SUPPORT}`} className="text-primary underline">
+                {SUPPORT}
+              </a>
+              .
+            </li>
+            <li>
+              To cancel, text <strong>STOP</strong> at any time. We will send one confirmation
+              message and then stop.
+            </li>
+            <li>Carriers are not liable for delayed or undelivered messages.</li>
+          </ul>
+          <p className="mt-3">
+            See our{" "}
+            <Link href="/privacy" className="text-primary underline">
+              Privacy Policy
+            </Link>{" "}
+            for how we handle your information.
+          </p>
+        </section>
+
+        <section>
           <h2 className="font-display text-2xl font-semibold">Intellectual property</h2>
           <p className="mt-3">
             The Site and its content &mdash; including the Claudette&rsquo;s Cookies name, logo,
