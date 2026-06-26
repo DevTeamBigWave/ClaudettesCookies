@@ -439,13 +439,16 @@ export default function CheckoutPage() {
             className="mt-0.5 shrink-0"
           />
           <span>
-            <span className="font-medium text-foreground">Text me about my order.</span> I agree to
-            receive recurring automated text messages from Claudette&rsquo;s Cookies &mdash; order and
-            shipping updates, plus the occasional treat. Consent isn&rsquo;t required to buy. Message
-            frequency varies. Message and data rates may apply. Reply STOP to opt out or HELP for
-            help. See our{" "}
+            I agree to receive recurring automated marketing and order text messages from
+            Claudette&rsquo;s Cookies at the number provided. Consent is not a condition of purchase.
+            Message frequency varies. Message and data rates may apply. Reply STOP to opt out, HELP
+            for help. See our{" "}
             <Link href="/privacy" className="underline hover:text-primary">
               Privacy Policy
+            </Link>{" "}
+            and{" "}
+            <Link href="/terms" className="underline hover:text-primary">
+              Terms
             </Link>
             .
           </span>

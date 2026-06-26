@@ -70,9 +70,9 @@ export function NewsletterForm({ source = "footer" }: { source?: string }) {
         />
         <span>
           I agree to receive recurring automated marketing and order text messages from
-          Claudette&apos;s Cookies at the number provided. Consent is not a condition of purchase.
-          Msg frequency varies. Msg &amp; data rates may apply. Reply STOP to opt out, HELP for
-          help. See our{" "}
+          Claudette&rsquo;s Cookies at the number provided. Consent is not a condition of purchase.
+          Message frequency varies. Message and data rates may apply. Reply STOP to opt out, HELP
+          for help. See our{" "}
           <Link href="/privacy" className="underline hover:text-primary">
             Privacy Policy
           </Link>{" "}
