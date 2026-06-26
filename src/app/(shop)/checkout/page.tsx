@@ -44,6 +44,8 @@ export default function CheckoutPage() {
 
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  // SMS marketing/notification consent — A2P requires it start unchecked.
+  const [smsConsent, setSmsConsent] = useState(false);
   const [pickup, setPickup] = useState(false);
   const [address, setAddress] = useState<Address>(EMPTY_ADDRESS);
 
@@ -227,6 +229,8 @@ export default function CheckoutPage() {
           // Where this visitor came from, so the order can be attributed to a
           // source (Facebook, Google, …) in the admin dashboard.
           attribution: getAttribution(),
+          // SMS opt-in consent captured at checkout (A2P consent record).
+          smsConsent,
         }),
       });
       const data = (await res.json().catch(() => ({}))) as {
@@ -427,6 +431,25 @@ export default function CheckoutPage() {
             {pickup ? "So we can reach you when your order is ready." : "Required by the carrier for delivery updates."}
           </p>
         </div>
+        <label className="flex items-start gap-2 text-xs text-muted-foreground">
+          <input
+            type="checkbox"
+            checked={smsConsent}
+            onChange={(e) => setSmsConsent(e.target.checked)}
+            className="mt-0.5 shrink-0"
+          />
+          <span>
+            <span className="font-medium text-foreground">Text me about my order.</span> I agree to
+            receive recurring automated text messages from Claudette&rsquo;s Cookies &mdash; order and
+            shipping updates, plus the occasional treat. Consent isn&rsquo;t required to buy. Message
+            frequency varies. Message and data rates may apply. Reply STOP to opt out or HELP for
+            help. See our{" "}
+            <Link href="/privacy" className="underline hover:text-primary">
+              Privacy Policy
+            </Link>
+            .
+          </span>
+        </label>
         <div className="space-y-2">
           <label className="block text-sm font-medium">Promo code</label>
           <div className="flex gap-2">

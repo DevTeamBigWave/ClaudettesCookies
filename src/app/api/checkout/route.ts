@@ -50,6 +50,8 @@ const Body = z.object({
       referrerHost: z.string().trim().max(255).optional(),
     })
     .optional(),
+  // SMS opt-in consent from the checkout checkbox (defaults unchecked).
+  smsConsent: z.boolean().optional(),
   items: z
     .array(
       z.object({
@@ -69,7 +71,7 @@ export async function POST(req: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
-  const { email, phone, items, discountCode, pickup, address, rateId, attribution } = parsed.data;
+  const { email, phone, items, discountCode, pickup, address, rateId, attribution, smsConsent } = parsed.data;
   if (!pickup && !address) {
     return NextResponse.json({ error: "A shipping address is required." }, { status: 400 });
   }
@@ -270,6 +272,16 @@ export async function POST(req: Request) {
       })
       .eq("id", order.id);
     if (attribErr) console.error("Could not set attribution (run migration 0014):", attribErr.message);
+  }
+
+  // Record SMS consent (the A2P consent record), tied to the order's phone.
+  // Tolerant update so a not-yet-applied migration 0017 can't break checkout.
+  if (smsConsent) {
+    const { error: smsErr } = await db
+      .from("orders")
+      .update({ sms_consent: true, sms_consent_at: new Date().toISOString() })
+      .eq("id", order.id);
+    if (smsErr) console.error("Could not set SMS consent (run migration 0017):", smsErr.message);
   }
 
   await db.from("order_items").insert(
