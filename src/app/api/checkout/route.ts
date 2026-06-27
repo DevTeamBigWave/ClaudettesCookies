@@ -25,8 +25,8 @@ const Body = z.object({
   phone: z.string().trim().min(7).max(40).optional(),
   // When true, local pickup: no shipping address, no carrier, free.
   pickup: z.boolean().optional(),
-  // Shipping destination, collected in our own form so we can quote live USPS
-  // rates before payment. Required for ship orders (not pickup).
+  // Shipping destination, collected in our own form. Required for ship orders
+  // (not pickup).
   address: z
     .object({
       name: z.string().trim().optional(),
@@ -215,7 +215,7 @@ export async function POST(req: Request) {
     ? "Local pickup"
     : freeShipping
       ? "Free shipping"
-      : `${shippingRate?.carrier ?? "USPS"} · ${shippingRate?.service ?? "Shipping"}`;
+      : `${shippingRate?.service ?? "Standard shipping"}`;
 
   // 3) Upsert the customer when we already know the email; otherwise the webhook
   //    links/creates the customer from the wallet/SDK email after payment.
@@ -238,7 +238,7 @@ export async function POST(req: Request) {
       discount_id: discount?.id ?? null,
       discount_code: discount?.code ?? null,
       shipping_method: shippingMethod,
-      shipping_carrier: pickup ? "Pickup" : freeShipping ? "Flat" : (shippingRate?.carrier ?? "USPS"),
+      shipping_carrier: pickup ? "Pickup" : freeShipping ? "Flat" : (shippingRate?.carrier ?? "Flat"),
       shipping_service: pickup ? "PICKUP" : (shippingRate?.id ?? "FLAT"),
       shipping_address: shippingAddress,
     })

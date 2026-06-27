@@ -387,7 +387,7 @@ export default function CheckoutPage() {
       {/* Ship vs pickup */}
       <div className="grid grid-cols-2 gap-2">
         {[
-          { v: false, label: "Ship it", hint: "USPS to your door" },
+          { v: false, label: "Ship it", hint: "Standard or Express" },
           { v: true, label: "Pick up", hint: "Free · in person" },
         ].map((opt) => (
           <button

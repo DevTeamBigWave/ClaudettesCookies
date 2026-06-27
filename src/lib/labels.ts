@@ -2,9 +2,9 @@ import { isFedExShipConfigured, trackShipment, type TrackResult } from "@/lib/fe
 
 /**
  * Delivery tracking. The Shippo label/rate integration was removed — postage is
- * now bought manually (PirateShip / USPS) and tracking numbers entered on the
- * order. Automated delivery-status lookups run only if a FedEx Ship account is
- * configured; otherwise they no-op so the tracking cron and admin never error.
+ * bought manually for now and tracking numbers entered on the order. Automated
+ * delivery-status lookups run only if a FedEx Ship account is configured;
+ * otherwise they no-op so the tracking cron and admin never error.
  */
 
 export function isLabelProviderConfigured(): boolean {

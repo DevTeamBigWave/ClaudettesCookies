@@ -1,10 +1,10 @@
 import type { Discount } from "@/types/db";
 
 export const FREE_SHIPPING_THRESHOLD_CENTS = 5000;
-export const FLAT_SHIPPING_CENTS = 700;
-// Express tier when live FedEx rates aren't available (credentials missing or
-// the carrier errored). Keeps the two-tier checkout intact with a flat upgrade.
-export const FLAT_EXPRESS_SHIPPING_CENTS = 1800;
+// Flat shipping tiers shown at checkout: Standard $10, Express $20. (Live FedEx
+// rates will replace these once the FedEx API is wired up.)
+export const FLAT_SHIPPING_CENTS = 1000;
+export const FLAT_EXPRESS_SHIPPING_CENTS = 2000;
 
 /** Whether an order qualifies for free shipping (threshold or a free-shipping
  * discount). Centralized so checkout and the shipping endpoint agree. */

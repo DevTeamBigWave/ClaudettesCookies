@@ -3,10 +3,10 @@ import type { ShippableItem } from "@/lib/shipping";
 import { FLAT_SHIPPING_CENTS, FLAT_EXPRESS_SHIPPING_CENTS } from "@/lib/pricing";
 
 /**
- * Checkout shipping rates — flat tiers only. The live-carrier (Shippo)
- * integration was removed; postage is bought manually (e.g. PirateShip / USPS
- * Click-N-Ship) and the tracking number entered on the order in the admin.
- * Kept as a thin module so checkout/quote callers are unchanged.
+ * Checkout shipping rates — flat tiers only (Standard $10, Express $20). The
+ * live-carrier integration was removed; postage is bought manually for now and
+ * the tracking number entered on the order in the admin. A direct FedEx API will
+ * replace these flat tiers later. Kept as a thin module so callers are unchanged.
  */
 
 type Db = ReturnType<typeof createAdminClient>;
