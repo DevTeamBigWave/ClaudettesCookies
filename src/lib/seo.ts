@@ -36,9 +36,9 @@ export function organizationSchema() {
 
 /**
  * LocalBusiness (Bakery) — for local + "near me" search and AI answer engines.
- * NAP is the real operating/pickup address (also printed on every shipping
- * label). Opening hours and geo coordinates are intentionally omitted rather
- * than guessed; add them here once confirmed.
+ * Address is the confirmed public operating/pickup address. `telephone` is
+ * intentionally omitted until the official (Twilio) business number is verified
+ * — add it here then. Opening hours and geo also omitted rather than guessed.
  */
 export function localBusinessSchema() {
   return {
@@ -50,7 +50,6 @@ export function localBusinessSchema() {
     image: `${SITE}/brand/og-default.jpg`,
     logo: LOGO,
     email: "hello@claudettescookies.shop",
-    telephone: "+19179351266",
     address: {
       "@type": "PostalAddress",
       streetAddress: "108-16 Rockaway Beach Blvd",
