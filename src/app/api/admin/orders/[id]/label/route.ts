@@ -106,7 +106,21 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
     })
     .eq("id", id);
 
-  return NextResponse.json({ trackingNumber: label.trackingNumber, carrier: label.carrier });
+  // Store the USPS QR code URL separately so a not-yet-applied migration 0018
+  // can't fail the critical tracking/label update above.
+  if (label.qrCodeUrl) {
+    const { error: qrErr } = await db
+      .from("orders")
+      .update({ label_qr_url: label.qrCodeUrl })
+      .eq("id", id);
+    if (qrErr) console.error("Could not store QR url (run migration 0018):", qrErr.message);
+  }
+
+  return NextResponse.json({
+    trackingNumber: label.trackingNumber,
+    carrier: label.carrier,
+    qrCodeUrl: label.qrCodeUrl,
+  });
 }
 
 /** Hand back a short-lived signed URL to download the stored label PDF. */

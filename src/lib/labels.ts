@@ -22,10 +22,11 @@ export async function generateLabel(opts: {
   recipient: LabelRecipient;
   weightLb: number;
   serviceType?: string;
-}): Promise<{ trackingNumber: string; labelBase64: string; carrier: string }> {
+}): Promise<{ trackingNumber: string; labelBase64: string; carrier: string; qrCodeUrl: string | null }> {
   if (isShippoConfigured()) return createShippoLabel(opts);
+  // FedEx fallback has no QR code (USPS Label Broker is a Shippo/USPS feature).
   const r = await createFedExLabel(opts);
-  return { ...r, carrier: "FedEx" };
+  return { ...r, carrier: "FedEx", qrCodeUrl: null };
 }
 
 export async function trackPackage(

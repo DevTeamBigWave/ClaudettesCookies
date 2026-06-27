@@ -164,6 +164,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
                 orderId={order.id}
                 hasLabel={Boolean(order.label_path)}
                 trackingNumber={order.tracking_number}
+                qrCodeUrl={order.label_qr_url}
                 canGenerate={canGenerate}
                 reason={reason}
               />

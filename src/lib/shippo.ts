@@ -132,7 +132,7 @@ export async function createShippoLabel(opts: {
   recipient: LabelRecipient;
   weightLb: number;
   rateId?: string | null;
-}): Promise<FedExLabel & { carrier: string }> {
+}): Promise<FedExLabel & { carrier: string; qrCodeUrl: string | null }> {
   if (!isShippoConfigured()) throw new Error("Shippo isn't configured (set SHIPPO_API_TOKEN).");
 
   let rateId = opts.rateId || null;
@@ -164,13 +164,22 @@ export async function createShippoLabel(opts: {
   const txRes = await fetch(`${BASE}/transactions/`, {
     method: "POST",
     headers: authHeaders(),
-    body: JSON.stringify({ rate: rateId, label_file_type: "PDF", async: false }),
+    // qr_code_requested asks Shippo for a USPS Label Broker QR code alongside the
+    // PDF — drop the package at USPS and they scan the QR to print the label, no
+    // printer needed. The carrier returns qr_code_url only when it's supported.
+    body: JSON.stringify({
+      rate: rateId,
+      label_file_type: "PDF",
+      qr_code_requested: true,
+      async: false,
+    }),
   });
   if (!txRes.ok) throw new Error(await shippoError(txRes, "buy label"));
   const tx = (await txRes.json()) as {
     status: string;
     tracking_number?: string;
     label_url?: string;
+    qr_code_url?: string;
     messages?: Array<{ text?: string }>;
   };
   if (tx.status !== "SUCCESS" || !tx.label_url || !tx.tracking_number) {
@@ -182,7 +191,7 @@ export async function createShippoLabel(opts: {
   if (!pdfRes.ok) throw new Error("Could not download the Shippo label PDF.");
   const labelBase64 = Buffer.from(await pdfRes.arrayBuffer()).toString("base64");
 
-  return { trackingNumber: tx.tracking_number, labelBase64, carrier };
+  return { trackingNumber: tx.tracking_number, labelBase64, carrier, qrCodeUrl: tx.qr_code_url ?? null };
 }
 
 const CARRIER_TOKEN: Record<string, string> = {
