@@ -1,7 +1,7 @@
 /**
- * Where orders ship from — the return address on every label and the origin for
- * live rate quotes. Edit it here (no env vars needed). Phone/email are required
- * by carriers (Shippo rejects a ship-from without them).
+ * Where orders ship from — the return address to use when buying postage and on
+ * packing slips. Edit it here (no env vars needed). Phone/email are kept because
+ * carriers require them on a ship-from address.
  */
 export const SHIP_FROM = {
   name: "Claudette's Cookies",

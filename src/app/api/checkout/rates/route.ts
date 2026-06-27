@@ -9,7 +9,7 @@ export const runtime = "nodejs";
  * Live shipping rates for a destination address. The checkout calls this once
  * the customer has typed a complete address, shows the returned options, and
  * sends the chosen one's `id` back to /api/checkout (which re-quotes to confirm
- * the price). Falls back to flat tiers when Shippo isn't configured.
+ * the price). Returns flat shipping tiers (live-carrier rates were removed).
  */
 const Body = z.object({
   address: z.object({

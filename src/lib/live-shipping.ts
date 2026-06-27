@@ -1,27 +1,37 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { packageWeightLb, type ShippableItem } from "@/lib/shipping";
-import { getShippoRates, isShippoConfigured, type ShipTo } from "@/lib/shippo";
+import type { ShippableItem } from "@/lib/shipping";
 import { FLAT_SHIPPING_CENTS, FLAT_EXPRESS_SHIPPING_CENTS } from "@/lib/pricing";
 
 /**
- * Live shipping rates for the checkout, in one place so the prices a customer is
- * shown are the exact ones we re-derive and bill. Uses Shippo (real USPS rates
- * to the typed address) when SHIPPO_API_TOKEN is set; otherwise falls back to
- * flat tiers so checkout always works (e.g. before the live token is added).
+ * Checkout shipping rates — flat tiers only. The live-carrier (Shippo)
+ * integration was removed; postage is bought manually (e.g. PirateShip / USPS
+ * Click-N-Ship) and the tracking number entered on the order in the admin.
+ * Kept as a thin module so checkout/quote callers are unchanged.
  */
 
 type Db = ReturnType<typeof createAdminClient>;
 
+/** Destination shape callers pass for a rate quote (kept for signature parity). */
+export interface ShipTo {
+  name?: string | null;
+  phone?: string | null;
+  line1: string;
+  line2?: string | null;
+  city: string;
+  state: string;
+  postalCode: string;
+}
+
 export interface CheckoutRate {
   /** Stable selector the client sends back; the server re-quotes and matches it. */
   id: string;
-  carrier: string; // "USPS", "FedEx", … or "Flat"
-  service: string; // human label, e.g. "Priority Mail"
+  carrier: string; // "Flat"
+  service: string; // human label
   amountCents: number;
   estimatedDays: number | null;
 }
 
-/** Flat tiers used whenever Shippo isn't configured or returns nothing. */
+/** The flat tiers shown at checkout. */
 export const FLAT_RATES: CheckoutRate[] = [
   {
     id: "FLAT",
@@ -39,31 +49,15 @@ export const FLAT_RATES: CheckoutRate[] = [
   },
 ];
 
-/** Live options to a destination (Shippo), cheapest-first — or flat tiers as a
- *  fallback. Never throws on a carrier hiccup, so checkout can't be blocked. */
-export async function liveRates(db: Db, to: ShipTo, items: ShippableItem[]): Promise<CheckoutRate[]> {
-  if (!isShippoConfigured()) return FLAT_RATES;
-  try {
-    const weightLb = await packageWeightLb(db, items);
-    const rates = await getShippoRates(to, weightLb);
-    if (rates.length === 0) return FLAT_RATES;
-    return rates.map((r) => ({
-      id: r.serviceToken,
-      carrier: r.carrier,
-      service: r.service,
-      amountCents: r.amountCents,
-      estimatedDays: r.estimatedDays,
-    }));
-  } catch (e) {
-    console.error("Live rate lookup failed; using flat rate:", e);
-    return FLAT_RATES;
-  }
+/** Flat shipping tiers for a destination. No live-carrier lookup. */
+export async function liveRates(_db: Db, _to: ShipTo, _items: ShippableItem[]): Promise<CheckoutRate[]> {
+  return FLAT_RATES;
 }
 
 /**
  * Re-derive the rate the customer selected, server-side, so the billed amount
- * can't be tampered with from the client. Falls back to the cheapest available
- * option when the requested id isn't offered for this destination.
+ * can't be tampered with from the client. Falls back to the cheapest tier when
+ * the requested id isn't one we offer.
  */
 export async function resolveRate(
   db: Db,

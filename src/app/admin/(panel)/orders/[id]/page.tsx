@@ -3,9 +3,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { isLabelProviderConfigured } from "@/lib/labels";
 import { PageHeader, StatusPill } from "@/components/admin/ui";
-import { LabelActions } from "@/components/admin/label-actions";
 import { FulfillmentActions } from "@/components/admin/fulfillment-actions";
 import { formatMoney, formatDate, boxContentsLines } from "@/lib/utils";
 
@@ -35,17 +33,6 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
   const ship = order.shipping_address as ShippingAddress;
   const addr = ship?.address;
   const hasAddress = Boolean(addr?.line1 && addr.city && addr.state && addr.postal_code);
-  const shipConfigured = isLabelProviderConfigured();
-  const isPaid = order.status === "paid" || order.status === "fulfilled";
-
-  const canGenerate = isPaid && shipConfigured && hasAddress;
-  const reason = !isPaid
-    ? "A label can be generated once the order is paid."
-    : !hasAddress
-      ? "No complete shipping address on this order yet."
-      : !shipConfigured
-        ? "Set SHIPPO_API_TOKEN (or the FEDEX_* vars) to enable label printing."
-        : undefined;
 
   return (
     <>
@@ -151,25 +138,6 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
               deliveredAt={order.delivered_at}
             />
           </div>
-
-          {!isPickup && (
-            <div className="rounded-2xl border border-border bg-card p-6">
-              <h2 className="mb-1 font-display text-lg font-semibold">Shipping label</h2>
-              <p className="mb-4 text-sm text-muted-foreground">
-                {order.shipping_carrier && order.shipping_carrier !== "Flat" ? order.shipping_carrier : "USPS / FedEx via Shippo"}
-                {order.shipping_service ? ` · ${order.shipping_service}` : ""}
-                {order.label_generated_at ? ` · printed ${formatDate(order.label_generated_at)}` : ""}
-              </p>
-              <LabelActions
-                orderId={order.id}
-                hasLabel={Boolean(order.label_path)}
-                trackingNumber={order.tracking_number}
-                qrCodeUrl={order.label_qr_url}
-                canGenerate={canGenerate}
-                reason={reason}
-              />
-            </div>
-          )}
         </div>
       </div>
     </>

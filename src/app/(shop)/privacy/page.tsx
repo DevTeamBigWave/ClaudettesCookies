@@ -123,7 +123,7 @@ export default function PrivacyPage() {
           </p>
           <ul className="mt-3 list-disc space-y-2 pl-5">
             <li><strong>Stripe</strong> &mdash; payment processing.</li>
-            <li><strong>Shippo</strong> and carriers (e.g. USPS) &mdash; shipping and tracking.</li>
+            <li><strong>Shipping carriers</strong> (e.g. USPS) &mdash; delivery and tracking.</li>
             <li><strong>Resend</strong> &mdash; transactional and marketing email.</li>
             <li><strong>Supabase</strong> &mdash; secure database hosting.</li>
             <li><strong>Google</strong> and <strong>Meta</strong> &mdash; analytics and advertising.</li>

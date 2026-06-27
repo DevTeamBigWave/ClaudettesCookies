@@ -41,15 +41,8 @@ const serverSchema = z.object({
   // fails closed with a clear message when this isn't set.
   ANTHROPIC_API_KEY: z.string().min(1).optional(),
   CRON_SECRET: z.string().min(16).optional(),
-  // Shippo powers live rates, labels, and tracking (USPS built in — no carrier
-  // approval needed). It's the only shipping integration the app uses now; the
-  // ship-from origin lives in code (src/lib/ship-from.ts), not env. SHIPPO_CARRIER
-  // picks which carrier to prefer (default USPS). When SHIPPO_API_TOKEN is unset,
-  // checkout falls back to flat-rate shipping and labels are disabled.
-  SHIPPO_API_TOKEN: z.string().min(1).optional(),
-  SHIPPO_CARRIER: z.string().min(1).default("USPS"),
   // Legacy FedEx-direct integration — kept optional so old Railway vars don't
-  // break boot, but unused now that shipping goes through Shippo. Safe to delete
+  // break boot, but unused now that postage is bought manually. Safe to delete
   // all FEDEX_* vars from the environment.
   FEDEX_API_KEY: z.string().min(1).optional(),
   FEDEX_API_SECRET: z.string().min(1).optional(),

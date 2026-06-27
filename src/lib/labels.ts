@@ -1,38 +1,22 @@
-import {
-  isFedExShipConfigured,
-  createFedExLabel,
-  trackShipment,
-  type LabelRecipient,
-  type TrackResult,
-} from "@/lib/fedex";
-import { isShippoConfigured, createShippoLabel, trackViaShippo } from "@/lib/shippo";
+import { isFedExShipConfigured, trackShipment, type TrackResult } from "@/lib/fedex";
 
 /**
- * Carrier-agnostic label + tracking. Prefers Shippo when SHIPPO_API_TOKEN is set
- * (multi-carrier, no FedEx production-API approval needed); otherwise falls back
- * to the FedEx Ship API directly. The admin label route, delivery tracking, and
- * the tracking cron all go through here, so swapping providers is one place.
+ * Delivery tracking. The Shippo label/rate integration was removed — postage is
+ * now bought manually (PirateShip / USPS) and tracking numbers entered on the
+ * order. Automated delivery-status lookups run only if a FedEx Ship account is
+ * configured; otherwise they no-op so the tracking cron and admin never error.
  */
 
 export function isLabelProviderConfigured(): boolean {
-  return isShippoConfigured() || isFedExShipConfigured();
-}
-
-export async function generateLabel(opts: {
-  recipient: LabelRecipient;
-  weightLb: number;
-  serviceType?: string;
-}): Promise<{ trackingNumber: string; labelBase64: string; carrier: string; qrCodeUrl: string | null }> {
-  if (isShippoConfigured()) return createShippoLabel(opts);
-  // FedEx fallback has no QR code (USPS Label Broker is a Shippo/USPS feature).
-  const r = await createFedExLabel(opts);
-  return { ...r, carrier: "FedEx", qrCodeUrl: null };
+  return isFedExShipConfigured();
 }
 
 export async function trackPackage(
   trackingNumber: string,
-  carrier?: string | null,
+  _carrier?: string | null,
 ): Promise<TrackResult> {
-  if (isShippoConfigured()) return trackViaShippo(trackingNumber, carrier);
+  if (!isFedExShipConfigured()) {
+    return { status: "unknown", statusText: "Tracking not available", deliveredAt: null };
+  }
   return trackShipment(trackingNumber);
 }
