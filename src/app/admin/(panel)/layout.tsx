@@ -6,6 +6,9 @@ import { MobileAdminNav } from "@/components/admin/mobile-nav";
 
 export const dynamic = "force-dynamic"; // admin is always live data
 
+// Private area — never index, never follow (also auth-gated + robots-disallowed).
+export const metadata = { robots: { index: false, follow: false } };
+
 export default async function PanelLayout({ children }: { children: React.ReactNode }) {
   const profile = await requireAdmin();
 

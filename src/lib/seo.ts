@@ -34,6 +34,38 @@ export function organizationSchema() {
   };
 }
 
+/**
+ * LocalBusiness (Bakery) — for local + "near me" search and AI answer engines.
+ * NAP is the real operating/pickup address (also printed on every shipping
+ * label). Opening hours and geo coordinates are intentionally omitted rather
+ * than guessed; add them here once confirmed.
+ */
+export function localBusinessSchema() {
+  return {
+    "@context": "https://schema.org",
+    "@type": "Bakery",
+    "@id": `${SITE}/#bakery`,
+    name: BRAND,
+    url: SITE,
+    image: `${SITE}/brand/og-default.jpg`,
+    logo: LOGO,
+    email: "hello@claudettescookies.shop",
+    telephone: "+19179351266",
+    address: {
+      "@type": "PostalAddress",
+      streetAddress: "108-16 Rockaway Beach Blvd",
+      addressLocality: "Rockaway Park",
+      addressRegion: "NY",
+      postalCode: "11694",
+      addressCountry: "US",
+    },
+    servesCuisine: "Cookies",
+    priceRange: "$$",
+    areaServed: { "@type": "Country", name: "United States" },
+    sameAs: ["https://www.instagram.com/claudettescookies"],
+  };
+}
+
 export function websiteSchema() {
   return {
     "@context": "https://schema.org",
