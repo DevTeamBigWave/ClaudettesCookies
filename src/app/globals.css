@@ -85,3 +85,16 @@
     @apply mx-auto max-w-3xl px-6;
   }
 }
+
+/* Stop iOS Safari from auto-zooming when a form control gains focus. iOS zooms
+   whenever the focused field's font-size is below 16px; with our 18px root,
+   Tailwind's `text-sm` (~15.75px) trips it on every input (incl. the chat
+   widget). Force 16px on touch devices only — the desktop design keeps its
+   compact inputs, and we never disable pinch-zoom (an accessibility no-no). */
+@media (pointer: coarse) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
