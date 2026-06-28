@@ -106,6 +106,26 @@ export default async function HomePage() {
         </div>
       </section>
 
+      {/* Quiz funnel — "Find your box" */}
+      <section className="container py-12">
+        <div className="flex flex-col items-center justify-between gap-5 rounded-3xl border border-border bg-secondary/40 p-8 text-center sm:flex-row sm:text-left">
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-widest text-primary">
+              30-second quiz
+            </p>
+            <h2 className="mt-1 font-display text-2xl font-semibold text-[hsl(var(--maroon))]">
+              Not sure which box? Find your match.
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Three quick taps and we&rsquo;ll pick your cookies.
+            </p>
+          </div>
+          <Button asChild size="lg" className="shrink-0">
+            <Link href="/go/find-your-box">Find your box →</Link>
+          </Button>
+        </div>
+      </section>
+
       {/* Credibility — real heritage, the strongest honest social proof */}
       <CredibilityBand />
 
