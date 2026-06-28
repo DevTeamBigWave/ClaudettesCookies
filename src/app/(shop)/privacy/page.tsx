@@ -130,9 +130,11 @@ export default function PrivacyPage() {
           </ul>
           <p className="mt-3">
             We may also disclose information if required by law or to protect our rights, customers,
-            or the public. Note that some advertising cookies may be considered &ldquo;sharing&rdquo;
-            of personal information under certain U.S. state privacy laws &mdash; see your rights
-            below.
+            or the public. While some web advertising cookies may be considered &ldquo;sharing&rdquo;
+            of online identifiers under certain U.S. state privacy laws (see your rights below),
+            this <strong>never includes your mobile phone number or your SMS opt-in or consent</strong>
+            , which are not shared, sold, or provided to any third party or affiliate for marketing
+            or promotional purposes &mdash; see <em>SMS / text messaging</em> below.
           </p>
         </section>
 
@@ -141,20 +143,20 @@ export default function PrivacyPage() {
           <p className="mt-3">
             If you opt in to text messages from Claudette&rsquo;s Cookies, we use your mobile
             number only to send the messages you signed up for &mdash; order and shipping updates
-            and, if you opted in, marketing offers.
+            and, if you opted in, marketing offers. By signing up, you agree to receive recurring
+            automated text messages from Claudette&rsquo;s Cookies. Message frequency varies.
+            Message and data rates may apply. Reply <strong>STOP</strong> to unsubscribe or{" "}
+            <strong>HELP</strong> for help at any time.
           </p>
           <p className="mt-3">
             <strong>
-              We never share or sell your mobile information or SMS consent to third parties or
-              affiliates for their own marketing or promotional purposes.
+              We do not share, sell, or otherwise provide your mobile phone number or messaging
+              consent information to any third parties or affiliates for marketing or promotional
+              purposes.
             </strong>{" "}
-            Your opt-in to text messaging is not shared with anyone. We share your number only with
-            the messaging provider that delivers these texts, and only so they can be sent on our
-            behalf.
-          </p>
-          <p className="mt-3">
-            Message and data rates may apply. Message frequency varies. Reply <strong>STOP</strong>{" "}
-            to unsubscribe or <strong>HELP</strong> for help at any time.
+            We share your mobile number only with the messaging provider that delivers these texts,
+            and solely so they can be sent on our behalf. The analytics and advertising tools
+            described above never receive your mobile phone number or your SMS opt-in or consent.
           </p>
         </section>
 
