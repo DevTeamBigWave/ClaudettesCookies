@@ -109,6 +109,11 @@ export function trackBeginCheckout(items: AnalyticsItem[], valueCents: number) {
   });
 }
 
+/** Generic GA4 event — used by funnels for started / step_completed / etc. */
+export function trackEvent(name: string, params?: Record<string, unknown>) {
+  gtag("event", name, params ?? {});
+}
+
 /** Email capture / soft conversion — lets ads optimize toward lead capture. */
 export function trackLead(source: string) {
   gtag("event", "generate_lead", { currency: "USD", value: 0, lead_source: source });

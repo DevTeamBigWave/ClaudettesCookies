@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { AddToCart } from "@/components/shop/add-to-cart";
 import { BuildYourOwn } from "@/components/shop/build-your-own";
 import { Guarantee } from "@/components/shop/guarantee";
+import { QuizMatchBanner } from "@/components/funnel/quiz-match-banner";
 import { JsonLd } from "@/components/seo/json-ld";
 import { productSchema, breadcrumbSchema } from "@/lib/seo";
 import {
@@ -74,6 +75,7 @@ export default async function ProductPage({ params }: Params) {
       </div>
 
       <div className="flex flex-col">
+        <QuizMatchBanner />
         <nav className="mb-4 text-sm text-muted-foreground">
           <Link href="/shop" className="hover:text-primary">Shop</Link>
           <span className="mx-2">/</span>

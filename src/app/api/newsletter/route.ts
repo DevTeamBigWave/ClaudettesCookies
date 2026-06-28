@@ -9,11 +9,15 @@ export const runtime = "nodejs";
 
 const Body = z.object({
   email: z.string().email(),
-  source: z.string().max(40).optional(),
+  source: z.string().max(60).optional(),
   fullName: z.string().max(120).optional(),
   phone: z.string().trim().min(7).max(40).optional(),
   // SMS opt-in consent from the signup checkbox (defaults unchecked on the client).
   smsConsent: z.boolean().optional(),
+  // Structured lead context (e.g. funnel quiz answers + computed result).
+  metadata: z.record(z.unknown()).optional(),
+  // Honeypot: bots fill hidden fields. A non-empty value = silently accept, no write.
+  hp: z.string().optional(),
 });
 
 export async function POST(req: Request) {
@@ -21,7 +25,13 @@ export async function POST(req: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid email" }, { status: 400 });
   }
-  const { email, source, fullName, phone, smsConsent } = parsed.data;
+  const { email, source, fullName, phone, smsConsent, metadata, hp } = parsed.data;
+
+  // Honeypot tripped — pretend success so bots get no signal, but store nothing.
+  if (hp && hp.trim()) {
+    return NextResponse.json({ ok: true });
+  }
+
   const db = createAdminClient();
 
   // Upsert; if they previously unsubscribed, re-subscribing is intentional here.
@@ -61,18 +71,21 @@ export async function POST(req: Request) {
     }).catch((e) => console.error("Welcome email failed:", e));
   }
 
-  // Record the SMS consent (the A2P consent record). Tolerant update so a
-  // not-yet-applied migration 0016 can't break the signup.
-  if (subscriberId && (phone || smsConsent)) {
-    const { error: smsErr } = await db
-      .from("email_subscribers")
-      .update({
-        phone: phone ?? null,
-        sms_consent: Boolean(smsConsent),
-        sms_consent_at: smsConsent ? new Date().toISOString() : null,
-      })
-      .eq("id", subscriberId);
-    if (smsErr) console.error("Could not save SMS consent (run migration 0016):", smsErr.message);
+  // Patch only the fields actually provided, so a metadata-only funnel lead can't
+  // wipe an existing subscriber's phone/consent. Tolerant: a not-yet-applied
+  // migration (0016 sms_consent / 0018 metadata) can't break the signup.
+  if (subscriberId) {
+    const patch: Record<string, unknown> = {};
+    if (phone !== undefined) patch.phone = phone;
+    if (smsConsent !== undefined) {
+      patch.sms_consent = Boolean(smsConsent);
+      patch.sms_consent_at = smsConsent ? new Date().toISOString() : null;
+    }
+    if (metadata !== undefined) patch.metadata = metadata;
+    if (Object.keys(patch).length) {
+      const { error: patchErr } = await db.from("email_subscribers").update(patch).eq("id", subscriberId);
+      if (patchErr) console.error("Could not save lead details (run migrations 0016/0018):", patchErr.message);
+    }
   }
 
   return NextResponse.json({ ok: true, alreadySubscribed: Boolean(existing) });
