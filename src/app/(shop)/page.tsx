@@ -19,7 +19,7 @@ export const metadata: Metadata = {
     title: "Claudette's Cookies — No Seed Oils. Just Butter.",
     description:
       "Moroccan-inspired flavors, baked with grass-fed butter and organic flour. Baked to order, shipped nationwide. Everybody eats.",
-    images: [{ url: "/brand/og-default.jpg", width: 1200, height: 630, alt: "Claudette's Cookies" }],
+    // Share image comes from app/opengraph-image.tsx (branded dynamic card).
   },
 };
 

@@ -44,13 +44,13 @@ export const metadata: Metadata = {
     siteName: "Claudette's Cookies",
     title: "Claudette's Cookies — No Seed Oils. Just Butter.",
     description: "Moroccan-inspired flavors meet healthy eats. Everybody eats.",
-    images: [{ url: "/brand/og-default.jpg", width: 1200, height: 630, alt: "Claudette's Cookies" }],
+    // Share image comes from app/opengraph-image.tsx (branded dynamic card).
   },
   twitter: {
     card: "summary_large_image",
     title: "Claudette's Cookies — No Seed Oils. Just Butter.",
     description: "Moroccan-inspired flavors meet healthy eats. Everybody eats.",
-    images: ["/brand/og-default.jpg"],
+    // Twitter image also inherits from app/opengraph-image.tsx.
   },
 };
 
